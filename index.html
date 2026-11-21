@@ -240,6 +240,7 @@ function siteSim(a,b){
 }
 
 /* ---------- plan (Excel) ---------- */
+const KEEP = new Set(["התקנה","החלפה"]);
 function parsePlan(aoa){
   const hIdx = aoa.findIndex(r => r && r.some(c => clean(c) === "שם אתר"));
   if (hIdx < 0) throw new Error("לא נמצאה שורת כותרת עם 'שם אתר'");
@@ -263,7 +264,7 @@ function parsePlan(aoa){
       model: clean(r[C.model]), ins: flag(r[C.ins]), plate: flag(r[C.plate]), task: C.task >= 0 ? normTask(r[C.task]) : "אחר",
       notes: clean(r[C.notes]), contact: clean(r[C.contact]), address: clean(r[C.address]) });
   }
-  return out;
+  return out.filter(p => KEEP.has(p.task));   // רק התקנה והחלפה: הזזה, פירוק וכל השאר לא נכנסים בכלל
 }
 
 /* ---------- email (image read by Claude) ---------- */
@@ -284,7 +285,7 @@ async function readImages(files){
     const rows = (res && res.rows) || [];
     if (!rows.length) throw { code: "empty" };
     state.email = rows.map((r,i) => ({ date: parseDate(r.date), day: clean(r.day), site: clean(r.site), supplier: clean(r.supplier), device: clean(r.device),
-      model: clean(r.model), ins: !!r.insurance, plate: !!r.plate, task: normTask(r.task), serial: clean(r.serial), order: i })).filter(r => r.date);
+      model: clean(r.model), ins: !!r.insurance, plate: !!r.plate, task: normTask(r.task), serial: clean(r.serial), order: i })).filter(r => r.date && KEEP.has(r.task));
     state.imgName = [...files].map(f => f.name).join(", ");
     state.sample = false; state.week = null;
     st.className = "st"; st.textContent = `${state.imgName}: נקראו ${state.email.length} שורות`;
@@ -472,7 +473,7 @@ $("nextW").onclick = () => { pickedDay = null; const w = [...new Set(buildItems(
 function boot(){
 /* ---------- start with the 20/11 files ---------- */
 state.planRaw = SAMPLE_PLAN; state.plan = parsePlan(SAMPLE_PLAN); state.planName = SOURCE.planName || "";
-state.email = SAMPLE_EMAIL.map((r,i) => ({ ...r, task: normTask(r.task), order: i }));
+state.email = SAMPLE_EMAIL.map((r,i) => ({ ...r, task: normTask(r.task), order: i })).filter(e => KEEP.has(e.task));
 for (const o of (SOURCE.overrides || [])){
   const k = devNo(o.device_in_plan); if (!k) continue;
   const target = o.field === "device" ? devNo(o.value) : k;
@@ -612,7 +613,7 @@ function pasteTable(html){
       if (!hdr) continue;
       const g = k => hdr[k] >= 0 ? clean(row[hdr[k]]) : "";
       const d = parseDate(g("date"));
-      if (!d || !g("site")) continue;
+      if (!d || !g("site") || !KEEP.has(normTask(g("task")))) continue;
       out.push({ date: d, day: g("day"), site: g("site"), supplier: g("supplier"), device: g("device"), model: g("model"),
         ins: g("ins").toUpperCase() === "V", plate: g("plate").toUpperCase() === "V", task: normTask(g("task")), serial: g("serial"), order: out.length });
     }
