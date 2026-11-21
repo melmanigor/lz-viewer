@@ -297,7 +297,8 @@ function buildItems(){
       plan.forEach((p,i) => { if (used.has(i) || Math.abs(toUTC(p.date) - toUTC(e.date)) > 7*864e5) return; const s = siteSim(p.site, e.site) + (p.date === e.date ? 0.01 : 0); if (s >= best){ best = s; pi = i; } });
     }
     if (pi >= 0){ used.add(pi); const p = plan[pi]; const diffs = compare(p, e);
-      items.push({ date: p.date, team: p.team, order: p.order, p, e, diffs, status: diffs.length ? "warn" : "ok" }); }
+      const onlyNoDev = diffs.length && diffs.every(x => x.startsWith("מספר כספת חסר"));   // חסר במייל, הושלם מהאקסל
+      items.push({ date: p.date, team: p.team, order: p.order, p, e, diffs, status: onlyNoDev ? "missing" : diffs.length ? "warn" : "ok" }); }
     else items.push({ date: e.date, team: 99, order: 1e6 + e.order, p: null, e, diffs: ["לא מופיע בתכנית ההתקנות"], status: "extra" });
   }
   const emailWeeks = new Set(state.email.map(e => weekOf(e.date)));   // באקסל ולא במייל של אותו שבוע: נשאר באותו יום ומסומן
@@ -347,7 +348,7 @@ function card(it){
       <div class="serial idrow">${serialHtml}</div>
     </div>
     ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${t}</span>`).join("")}</div>` : ""}
-    ${it.diffs.length && it.status !== "missing" && it.status !== "extra" ? `<ul class="diffs">${it.diffs.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}
+    ${it.diffs.length && (it.status !== "missing" || it.e) && it.status !== "extra" ? `<ul class="diffs">${it.diffs.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}
     ${more}
   </article>`;
 }

@@ -241,7 +241,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.20 · 21/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.21 · 21/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal-bg" id="eilatModal" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="emT">
@@ -381,7 +381,8 @@ function buildItems(){
       plan.forEach((p,i) => { if (used.has(i) || Math.abs(toUTC(p.date) - toUTC(e.date)) > 7*864e5) return; const s = siteSim(p.site, e.site) + (p.date === e.date ? 0.01 : 0); if (s >= best){ best = s; pi = i; } });
     }
     if (pi >= 0){ used.add(pi); const p = plan[pi]; const diffs = compare(p, e);
-      items.push({ date: p.date, team: p.team, order: p.order, p, e, diffs, status: diffs.length ? "warn" : "ok" }); }
+      const onlyNoDev = diffs.length && diffs.every(x => x.startsWith("מספר כספת חסר"));   // חסר במייל, הושלם מהאקסל
+      items.push({ date: p.date, team: p.team, order: p.order, p, e, diffs, status: onlyNoDev ? "missing" : diffs.length ? "warn" : "ok" }); }
     else items.push({ date: e.date, team: 99, order: 1e6 + e.order, p: null, e, diffs: ["לא מופיע בתכנית ההתקנות"], status: "extra" });
   }
   const emailWeeks = new Set(state.email.map(e => weekOf(e.date)));   // באקסל ולא במייל של אותו שבוע: נשאר באותו יום ומסומן
@@ -431,7 +432,7 @@ function card(it){
       <div class="serial idrow">${serialHtml}</div>
     </div>
     ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${t}</span>`).join("")}</div>` : ""}
-    ${it.diffs.length && it.status !== "missing" && it.status !== "extra" ? `<ul class="diffs">${it.diffs.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}
+    ${it.diffs.length && (it.status !== "missing" || it.e) && it.status !== "extra" ? `<ul class="diffs">${it.diffs.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}
     ${more}
   </article>`;
 }
