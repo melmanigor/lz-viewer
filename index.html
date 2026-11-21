@@ -202,7 +202,7 @@ const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.pa
 
 const state = {
   plan: [], email: [], planName: "", imgName: "",
-  tasks: new Set(store.get("tasks", ["התקנה","החלפה"])),
+  tasks: new Set(["התקנה","החלפה"]),   // רק התקנה והחלפה, בלי בחירה
   week: null, sample: true,
 };
 
@@ -333,7 +333,7 @@ const itemTask = it => (it.p || it.e).task;
 /* ---------- render ---------- */
 const STATUS = { ok: ["תואם","s-ok"], warn: ["פער","s-warn"], missing: ["חסר במייל","s-missing"], extra: ["לא בתכנית","s-extra"], pending: ["ממתין לסריאל","s-pending"] };
 
-function renderFilters(){
+function renderFilters(){ $("filters").style.display = "none"; return;
   const f = $("filters"); f.querySelectorAll(".chip").forEach(c => c.remove());
   const present = new Set(state.plan.map(p => p.task).concat(state.email.map(e => e.task)));
   const list = TASKS.concat([...present].filter(t => !TASKS.includes(t)));
