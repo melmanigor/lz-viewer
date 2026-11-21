@@ -85,6 +85,20 @@ input[type=file]{display:none}
 .tasktag.t-new{background:#dbeafe;color:#1d4ed8;box-shadow:inset 0 0 0 1.5px #93c5fd}
 .tasktag.t-swap{background:#ede9fe;color:#6d28d9;box-shadow:inset 0 0 0 1.5px #c4b5fd}
 @media (prefers-color-scheme: dark){.tasktag.t-new{background:#1e3a8a;color:#dbeafe}.tasktag.t-swap{background:#4c1d95;color:#ede9fe}}
+button.stat{font:inherit;color:inherit;cursor:pointer}
+button.stat:hover{filter:brightness(.96)}
+.stat-modal{text-align:start;max-width:560px;max-height:85vh;display:flex;flex-direction:column;border-top-color:var(--accent)}
+.stat-modal h2{text-align:center}
+.sm-list{overflow:auto;display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.sm-item{border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.sm-top{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.sm-top span{color:var(--muted);font-size:.9rem}
+.sm-ids{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;font-size:.95rem}
+.sm-why{margin-top:6px;font-size:.9rem;color:var(--ink)}
+.modal-bg{position:fixed;inset:0;background:rgba(10,20,18,.55);display:grid;place-items:center;padding:16px;z-index:50}
+.modal{background:var(--surface);color:var(--ink);border-radius:20px;padding:22px 20px;width:100%;box-shadow:0 20px 50px rgba(0,0,0,.3);border-top:6px solid var(--accent)}
+.modal h2{margin:4px 0 12px;font-size:1.2rem}
+.modal .btn{width:100%;padding:12px;font-size:1.05rem;border-radius:12px}
 .ids{display:flex;flex-direction:column;gap:6px}
 .idrow{display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px}
 .idrow .k{color:var(--muted);font-size:.8rem;min-width:66px}
@@ -163,6 +177,9 @@ th{color:var(--muted);font-weight:500;font-size:.8rem}
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
 </div>
 <div class="toast" id="toast" hidden></div>
+<div class="modal-bg" id="statModal" hidden><div class="modal stat-modal" role="dialog" aria-modal="true" aria-labelledby="smT">
+  <h2 id="smT"></h2><div id="smL" class="sm-list"></div>
+  <button class="btn primary" id="smOk" type="button">סגור</button></div></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
@@ -370,7 +387,7 @@ function render(){
   renderFilters();
 
   const count = k => items.filter(i => i.status === k).length;
-  $("stats").innerHTML = Object.entries(STATUS).map(([k,[l,c]]) => `<span class="stat ${c}"><span class="dot"></span><b>${count(k)}</b>${l}</span>`).join("");
+  $("stats").innerHTML = Object.entries(STATUS).map(([k,[l,c]]) => `<button type="button" class="stat ${c}" data-k="${k}" title="לחץ לרשימה"><span class="dot"></span><b>${count(k)}</b>${l}</button>`).join("");
 
   const days = []; for (let i = 0; i < 7; i++){ const d = addDays(state.week, i); const di = items.filter(x => x.date === d); if (di.length) days.push([d, di]); }
   $("board").style.setProperty("--n", Math.max(days.length,1));
@@ -402,6 +419,23 @@ function eilatBanner(items){
   el.innerHTML = `<b>🔔 כספת לאילת השבוע: צריך להכין עד יום ראשון ${dm(state.week)}</b><ul>${
     hits.map(it => `<li>יום ${DAYS[toUTC(it.date).getUTCDay()]} ${dm(it.date)}: ${esc(it.p.site)} · ${esc(it.p.task)} · כספת ${esc(it.p.device || "—")}</li>`).join("")}</ul>`;
 }
+/* ---------- tap a counter: see exactly which tasks and what happened ---------- */
+$("stats").addEventListener("click", e => {
+  const b = e.target.closest("button[data-k]"); if (!b) return;
+  const k = b.dataset.k, list = lastVisible.filter(i => i.status === k);
+  $("smT").textContent = `${STATUS[k][0]} (${list.length})`;
+  $("smL").innerHTML = list.length ? list.map(i => { const p = i.p, e = i.e, src = p || e;
+    const serial = e && e.serial ? esc(e.serial) : "—";
+    return `<div class="sm-item"><div class="sm-top"><b>${esc(src.site)}</b><span>${DAYS[toUTC(i.date).getUTCDay()]} ${dm(i.date)} · ${esc(src.task)}</span></div>
+      <div class="sm-ids"><span>מספר כספת <b class="mono">${esc((p && p.device) || (e && e.device) || "—")}</b></span><span>סריאל <b class="mono">${serial}</b></span></div>
+      <div class="sm-why">${i.diffs.length ? i.diffs.map(esc).join("<br>") : (k === "ok" ? "האקסל והמייל תואמים" : k === "pending" ? "עוד לא הגיע מייל סריאלים לשבוע הזה" : "")}</div></div>`; }).join("")
+    : `<div class="empty">אין משימות בקטגוריה הזו השבוע.</div>`;
+  $("statModal").hidden = false; $("smOk").focus();
+});
+$("smOk").onclick = () => { $("statModal").hidden = true; };
+$("statModal").addEventListener("click", e => { if (e.target.id === "statModal") $("statModal").hidden = true; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("statModal").hidden = true; });
+
 /* ---------- copy ---------- */
 function scheduleText(){
   const byDay = {};
