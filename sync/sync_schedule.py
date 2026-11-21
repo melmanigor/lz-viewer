@@ -410,6 +410,7 @@ def parse_plan(rows):
         return -1
 
     c_date, c_site, c_dev, c_model, c_notes = col("תאריך"), col("שם אתר"), col("מספר כספת/מכשיר", "מספר כספת"), col("דגם"), col("הערות")
+    c_addr, c_region = col("כתובת"), col("מבצע")
     width = max(len(r) for r in rows[:400])
     counts = [sum(1 for r in rows[1:400] if c < len(r) and re.match(r"^(התקנה|החלפה|הזזה|פירוק)", clean(r[c]))) for c in range(width)]
     if 0 <= c_notes < width:
@@ -426,7 +427,8 @@ def parse_plan(rows):
         site = clean(g(c_site))
         if re.match(r"^צוות\s*\d+", site) or not cur or (not site and not dev_no(g(c_dev))):
             continue
-        out.append({"date": cur, "site": site, "device": clean(g(c_dev)), "model": clean(g(c_model)), "task": norm_task(g(c_task))})
+        out.append({"date": cur, "site": site, "device": clean(g(c_dev)), "model": clean(g(c_model)), "task": norm_task(g(c_task)),
+                    "address": clean(g(c_addr)), "region": clean(g(c_region))})
     return [r for r in out if r["task"] in GAPS_TASKS]   # רק התקנה והחלפה. הזזה, פירוק וכל השאר לא נכנסים בכלל
 
 
@@ -896,6 +898,19 @@ def main():
         publish_to_viewer(plan_rows, email_rows, {k: v for k, v in source.items() if k != "banner"})
     if not args.no_open:
         webbrowser.open(out.as_uri())
+
+    # כספת לאילת באחד הימים: צריך להכין אותה עד יום ראשון של אותו שבוע
+    if plan_path:
+        today = dt.date.today().isoformat()
+        eilat = [p for p in parse_plan(plan_rows) if "אילת" in f"{p['site']} {p.get('address', '')}" and p["date"] >= today]
+        for w in sorted({week_of(p["date"]) for p in eilat}):
+            ps = [p for p in eilat if week_of(p["date"]) == w]
+            sun = dt.date.fromisoformat(w)
+            log(f"🔔 כספת לאילת ({len(ps)}): להכין עד יום ראשון {sun.day}/{sun.month}")
+            for p in ps:
+                log(f"   - {day_label(p['date'])} {p['site']} | {p['task']} | כספת {p['device'] or '—'}")
+            notify(f"כספת לאילת: להכין עד יום ראשון {sun.day}/{sun.month}",
+                   ", ".join(f"{p['site']} ({day_label(p['date'])})" for p in ps[:3]))
 
     if plan_path and email_rows:
         # התקנה/החלפה שבאקסל ולא במייל הסריאלים: נשארות בלוז באותו יום, ומודיעים לך.

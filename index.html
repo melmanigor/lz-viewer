@@ -1,5 +1,8 @@
 <!doctype html>
-<html lang="he"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}[hidden]{display:none!important}</style><title>לוז התקנות</title><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="לוז התקנות"><meta name="theme-color" content="#0d6b5c"><link rel="manifest" href="manifest.json?v=14"><link rel="icon" href="icon-192-v2.png"><link rel="apple-touch-icon" href="apple-touch-icon-v2.png"></head><body>
+<html lang="he"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}[hidden]{display:none!important}.eilat{background:#fff4d6;color:#5a3d00;border:1px solid #f0c24b;border-inline-start:6px solid #e0a100;border-radius:12px;padding:12px 16px}
+.eilat ul{margin:6px 0 0;padding-inline-start:20px}
+@media (prefers-color-scheme: dark){.eilat{background:#3a2c08;color:#ffe3a0;border-color:#8a6a14}}
+</style><title>לוז התקנות</title><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="לוז התקנות"><meta name="theme-color" content="#0d6b5c"><link rel="manifest" href="manifest.json?v=14"><link rel="icon" href="icon-192-v2.png"><link rel="apple-touch-icon" href="apple-touch-icon-v2.png"></head><body>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Rubik:wght@500;700&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -190,6 +193,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
   </section>
   <div class="banner pub" id="pubBar" hidden><span id="pubMsg">שינית את הלוז במכשיר הזה. עוד לא פורסם.</span><button class="btn primary" id="pubBtn" type="button">פרסם לשנינו</button></div>
   <div class="banner pub" id="arcBar" hidden><span id="arcMsg"></span><button class="btn" id="arcBack" type="button">חזרה ללוז הנוכחי</button></div>
+  <div class="eilat" id="eilat" role="alert" hidden></div>
   <div class="banner" id="banner" hidden style="display:none!important"></div>
 
   <section class="bar">
@@ -216,7 +220,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.14 · 21/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.15 · 21/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -440,9 +444,18 @@ function render(){
   const b = $("banner");
   b.hidden = !state.sample;
   b.textContent = SOURCE.banner || "";
+  eilatBanner(items);
   if (!$("planStatus").textContent || state.sample) $("planStatus").textContent = state.planName ? `${state.planName}: ${state.plan.length} שורות` : "";
 }
 
+/* ---------- Eilat: a safe going to Eilat this week must be prepared by Sunday ---------- */
+function eilatBanner(items){
+  const el = $("eilat"); if (!el) return;
+  const hits = items.filter(it => it.p && /אילת/.test(`${it.p.site} ${it.p.address || ""}`));
+  el.hidden = !hits.length; if (!hits.length) return;
+  el.innerHTML = `<b>🔔 כספת לאילת השבוע: צריך להכין עד יום ראשון ${dm(state.week)}</b><ul>${
+    hits.map(it => `<li>יום ${DAYS[toUTC(it.date).getUTCDay()]} ${dm(it.date)}: ${esc(it.p.site)} · ${esc(it.p.task)} · כספת ${esc(it.p.device || "—")}</li>`).join("")}</ul>`;
+}
 /* ---------- copy ---------- */
 function scheduleText(){
   const byDay = {};

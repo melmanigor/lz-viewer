@@ -1,5 +1,8 @@
 <!doctype html>
-<html lang="he"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}[hidden]{display:none!important}</style></head><body>
+<html lang="he"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}[hidden]{display:none!important}.eilat{background:#fff4d6;color:#5a3d00;border:1px solid #f0c24b;border-inline-start:6px solid #e0a100;border-radius:12px;padding:12px 16px}
+.eilat ul{margin:6px 0 0;padding-inline-start:20px}
+@media (prefers-color-scheme: dark){.eilat{background:#3a2c08;color:#ffe3a0;border-color:#8a6a14}}
+</style></head><body>
 <title>לוז התקנות שבועי</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -124,6 +127,7 @@ th{color:var(--muted);font-weight:500;font-size:.8rem}
       <input type="file" id="imgInput" accept="image/png,image/jpeg,image/webp" multiple>
     </label>
   </section>
+  <div class="eilat" id="eilat" role="alert" hidden></div>
   <div class="banner" id="banner" hidden></div>
 
   <section class="bar">
@@ -366,9 +370,18 @@ function render(){
   const b = $("banner");
   b.hidden = !state.sample;
   b.textContent = SOURCE.banner || "";
+  eilatBanner(items);
   if (!$("planStatus").textContent || state.sample) $("planStatus").textContent = state.planName ? `${state.planName}: ${state.plan.length} שורות` : "";
 }
 
+/* ---------- Eilat: a safe going to Eilat this week must be prepared by Sunday ---------- */
+function eilatBanner(items){
+  const el = $("eilat"); if (!el) return;
+  const hits = items.filter(it => it.p && /אילת/.test(`${it.p.site} ${it.p.address || ""}`));
+  el.hidden = !hits.length; if (!hits.length) return;
+  el.innerHTML = `<b>🔔 כספת לאילת השבוע: צריך להכין עד יום ראשון ${dm(state.week)}</b><ul>${
+    hits.map(it => `<li>יום ${DAYS[toUTC(it.date).getUTCDay()]} ${dm(it.date)}: ${esc(it.p.site)} · ${esc(it.p.task)} · כספת ${esc(it.p.device || "—")}</li>`).join("")}</ul>`;
+}
 /* ---------- copy ---------- */
 function scheduleText(){
   const byDay = {};
