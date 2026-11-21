@@ -80,6 +80,10 @@ input[type=file]{display:none}
 .pill{flex:none;font-size:.75rem;font-weight:700;border-radius:4px;padding:1px 7px;background:var(--cs);color:var(--c)}
 .meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.85rem;color:var(--muted)}
 .mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+.tasktag{display:inline-flex;align-items:center;gap:6px;align-self:flex-start;font-weight:800;font-size:1rem;padding:4px 12px;border-radius:999px;letter-spacing:.01em}
+.tasktag.t-new{background:#dbeafe;color:#1d4ed8;box-shadow:inset 0 0 0 1.5px #93c5fd}
+.tasktag.t-swap{background:#ede9fe;color:#6d28d9;box-shadow:inset 0 0 0 1.5px #c4b5fd}
+@media (prefers-color-scheme: dark){.tasktag.t-new{background:#1e3a8a;color:#dbeafe}.tasktag.t-swap{background:#4c1d95;color:#ede9fe}}
 .ids{display:flex;flex-direction:column;gap:6px}
 .idrow{display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px}
 .idrow .k{color:var(--muted);font-size:.8rem;min-width:66px}
@@ -237,7 +241,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.18 · 21/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.19 · 21/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal-bg" id="eilatModal" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="emT">
@@ -418,8 +422,9 @@ function card(it){
   const more = p && (p.contact || p.address || p.notes) ? `<details><summary>פרטי אתר</summary>
       ${p.address ? `<div>כתובת: ${esc(p.address)}</div>` : ""}${p.contact ? `<div>איש קשר: ${esc(p.contact)}</div>` : ""}${p.notes ? `<div>הערות: ${esc(p.notes)}</div>` : ""}</details>` : "";
   return `<article class="card ${cls}">
+    <div class="tasktag ${src.task === "החלפה" ? "t-swap" : "t-new"}">${src.task === "החלפה" ? "⇄" : "＋"} ${esc(src.task)}</div>
     <div class="row1"><span class="site">${esc(src.site)}</span><span class="pill">${label}</span></div>
-    <div class="meta"><span>${esc(src.task)}</span><span>${esc(src.supplier)}</span><span>${esc(src.model)}</span>${p && p.region ? `<span>${esc(p.region)}</span>` : ""}</div>
+    <div class="meta"><span>${esc(src.supplier)}</span><span>${esc(src.model)}</span>${p && p.region ? `<span>${esc(p.region)}</span>` : ""}</div>
     <div class="ids">
       <div class="idrow safe"><span class="k">מספר כספת</span><span class="v">${esc((p && p.device) || (e && e.device) || "—")}</span></div>
       <div class="serial idrow">${serialHtml}</div>
