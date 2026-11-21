@@ -758,6 +758,55 @@ def week_of(d):
     return (x - dt.timedelta(days=(x.weekday() + 1) % 7)).isoformat()   # השבוע מתחיל ביום ראשון
 
 
+def gap_sig(gs):
+    return ",".join(sorted(dev_no(g["plan"]["device"]) or clean(g["plan"]["site"]) for g in gs))
+
+
+def sync_sent_flag(gaps, since):
+    """אם מייל פערים נשלח מ-Outlook אחרי שהגיע מייל הסריאלים, הכפתור באתר הופך לאפור ('נשלח') אצל שניכם."""
+    try:
+        cfg = json.loads(VIEWER_CONFIG.read_text(encoding="utf-8"))
+        import win32com.client
+    except Exception:
+        return
+    import urllib.request
+    try:
+        sent = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI").GetDefaultFolder(5).Items
+        sent.Sort("[SentOn]", True)
+        last = None
+        for i, it in enumerate(sent):
+            if i > 300:
+                break
+            if (getattr(it, "Subject", "") or "").startswith("פערים בסריאלים לכספות"):
+                t = it.SentOn
+                last = dt.datetime(t.year, t.month, t.day, t.hour, t.minute)
+                break
+    except Exception as ex:
+        log(f"  (בדיקת 'פריטים שנשלחו' נכשלה: {ex})")
+        return
+    if not last or (since and last < since):
+        return
+
+    def call(name, body):
+        req = urllib.request.Request(cfg["supabase_url"].rstrip("/") + "/rest/v1/rpc/" + name,
+                                     data=json.dumps(body, ensure_ascii=False).encode(),
+                                     headers={"apikey": cfg["key"], "Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            t = r.read()
+            return json.loads(t) if t else None
+    for w in sorted({week_of(g["plan"]["date"]) for g in gaps}):
+        sig = gap_sig([g for g in gaps if week_of(g["plan"]["date"]) == w])
+        try:
+            cur = call("lz_flag_get", {"p_token": cfg["admin_token"], "p_key": f"gapsmail:{w}"})
+            if cur and cur.get("sig") == sig:
+                continue
+            call("lz_flag_set", {"p_token": cfg["admin_token"], "p_key": f"gapsmail:{w}",
+                                 "p_value": {"sig": sig, "at": last.isoformat(), "by": "outlook"}})
+            log(f"✓ מייל הפערים נשלח ב-{last:%d/%m %H:%M}. הכפתור באתר סומן 'נשלח'")
+        except Exception as ex:
+            log(f"  (סימון 'נשלח' באתר נכשל: {ex})")
+
+
 def archive_weeks(cfg, plan_rows, email_rows, source):
     """שומר כל שבוע שיש לו מייל סריאלים בארכיון, לחיפוש לפי אתר, מספר כספת או סריאל."""
     import urllib.request
@@ -938,6 +987,8 @@ def main():
             for p in missing:
                 log(f"   - {p['date'][8:]}/{p['date'][5:7]} {p['site']} | {p['task']} | כספת {p['device'] or '—'}")
         gaps = find_gaps(plan_rows, email_rows)
+        if gaps and not local:
+            sync_sent_flag(gaps, brinks.get("received") if brinks else None)
         if not gaps:
             log("✓ אין פערים במספרי כספות או בימים. לא הוכן מייל.")
         else:

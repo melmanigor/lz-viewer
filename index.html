@@ -94,6 +94,8 @@ button.stat:hover{filter:brightness(.96)}
 .sm-top span{color:var(--muted);font-size:.9rem}
 .sm-ids{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;font-size:.95rem}
 .sm-why{margin-top:6px;font-size:.9rem;color:var(--ink)}
+.mailbox{display:flex;gap:8px;flex-wrap:wrap}
+#mailGaps.sent{background:var(--line);color:var(--muted);border-color:var(--line);cursor:default;pointer-events:none}
 .ids{display:flex;flex-direction:column;gap:6px}
 .idrow{display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px}
 .idrow .k{color:var(--muted);font-size:.8rem;min-width:66px}
@@ -241,7 +243,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
   <section class="board" id="board" aria-label="לוז השבוע"></section>
 
   <section class="panel" id="issuesPanel">
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between"><h2>פערים לבדיקה</h2><a class="btn primary" id="mailGaps" hidden>הכן מייל פערים לברינקס</a></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between"><h2>פערים לבדיקה</h2><span class="mailbox"><a class="btn primary" id="mailGaps" hidden>הכן מייל פערים לברינקס</a><button class="btn" id="mailSent" type="button" hidden>שלחתי את המייל ✓</button></span></div>
     <div class="issues" id="issues"></div>
   </section>
   <section class="panel" id="archive">
@@ -251,7 +253,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.22 · 21/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.23 · 21/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal-bg" id="statModal" hidden><div class="modal stat-modal" role="dialog" aria-modal="true" aria-labelledby="smT">
@@ -631,6 +633,7 @@ async function load(){
     msg.hidden = true;
     archiveWeek = null; $("arcBar").hidden = true; $("upBtn").hidden = false;
     dirty = false; $("pubBar").hidden = true;
+    for (const k in mailFlags) delete mailFlags[k];
     state.week = null; boot(); state.sample = false;
     loadWeeks(); eilatPopup();
   }catch(e){ msg.textContent = "אין חיבור כרגע. נסה לרענן בעוד רגע."; }
@@ -657,14 +660,38 @@ $("logout").onclick = () => { store.set("viewerToken", ""); history.replaceState
 
 /* ---------- gaps email to Brinks (opens your mail app, you press Send) ---------- */
 const GAPS_TO = "Ariel.Zakuta@brinksinc.com;Leonid.Rubinshtein@brinksinc.com";
+/* sent state is shared by both users: key gapsmail:<week>, value {sig, at}. New gaps (different sig) turn the button back on. */
+const mailFlags = {}; let mailFlagsLoading = {};
+const gapSig = gaps => gaps.map(i => devNo(i.p.device) || clean(i.p.site)).sort().join(",");
+async function loadMailFlag(w){
+  if (w in mailFlags || mailFlagsLoading[w]) return; mailFlagsLoading[w] = true;
+  try{ mailFlags[w] = await rpc("lz_flag_get", { p_token: getToken(), p_key: "gapsmail:" + w }); }catch{ mailFlags[w] = null; }
+  mailFlagsLoading[w] = false; if (state.week === w) updateMail();
+}
 function updateMail(){
   const a = $("mailGaps"); if (!a) return;
   const gaps = lastVisible.filter(i => i.status === "warn" || i.status === "missing");
-  a.hidden = !gaps.length; if (!gaps.length) return;
+  a.hidden = !gaps.length; $("mailSent").hidden = true;
+  if (!gaps.length) return;
+  if (typeof rpc === "function" && getToken()) loadMailFlag(state.week);
+  const f = mailFlags[state.week], sent = f && f.sig === gapSig(gaps);
+  a.classList.toggle("sent", !!sent); a.classList.toggle("primary", !sent);
+  a.setAttribute("aria-disabled", sent ? "true" : "false");
+  a.textContent = sent ? `מייל פערים נשלח ${new Date(f.at).toLocaleDateString("he-IL",{day:"numeric",month:"numeric"})} ${new Date(f.at).toLocaleTimeString("he-IL",{hour:"2-digit",minute:"2-digit"})}` : "הכן מייל פערים לברינקס";
+  a.dataset.sig = gapSig(gaps);
   const lines = gaps.map(i => `- ${i.p.site} (${i.p.task}), לפי התכנית: יום ${DAYS[toUTC(i.p.date).getUTCDay()]} ${dm(i.p.date)}, כספת ${i.p.device}. הפער: ${i.diffs.join("; ")}`);
   const body = `אריאל, לאוניד שלום,\n\nמצאתי חוסר התאמה בין טבלת הסריאלים של אלי לבין תכנית ההתקנות. הנתונים הנכונים הם לפי התכנית:\n\n${lines.join("\n")}\n\nאשמח שתבדקו ותעדכנו.\nתודה`;
   a.href = `mailto:${GAPS_TO}?subject=${encodeURIComponent(`פערים בסריאלים לכספות (${gaps.length})`)}&body=${encodeURIComponent(body)}`;
 }
+$("mailGaps").addEventListener("click", e => {
+  if ($("mailGaps").classList.contains("sent")){ e.preventDefault(); return; }
+  setTimeout(() => { $("mailSent").hidden = false; }, 400);
+});
+$("mailSent").onclick = async () => {
+  const w = state.week, v = { sig: $("mailGaps").dataset.sig, at: new Date().toISOString(), by: "app" };
+  try{ await rpc("lz_flag_set", { p_token: getToken(), p_key: "gapsmail:" + w, p_value: v }); mailFlags[w] = v; updateMail(); toast("סומן שהמייל נשלח"); }
+  catch{ toast("לא הצלחתי לשמור. נסה שוב"); }
+};
 /* ---------- today first, any day or the whole week one tap away ---------- */
 let pickedDay = null;   // "YYYY-MM-DD", or "week"
 const todayYmd = () => { const n = new Date(); return `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`; };
