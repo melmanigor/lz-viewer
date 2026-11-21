@@ -686,6 +686,17 @@ UPDATE_URL = "https://raw.githubusercontent.com/melmanigor/lz-viewer/main/sync/"
 UPDATE_FILES = ["sync_schedule.py", "schedule_template.html", "README.md"]   # viewer_config.json וקבצי ה-bat לא מתעדכנים
 
 
+SITE_URL = "https://melmanigor.github.io/lz-viewer/"
+
+
+def open_schedule(local_file):
+    """פותח את הלוז. אם הלוז מתפרסם לאתר, פותחים את האתר (אותו מראה כמו באפליקציה, תמיד הגרסה האחרונה)."""
+    if VIEWER_CONFIG.exists():
+        webbrowser.open(SITE_URL)
+    else:
+        webbrowser.open(local_file.as_uri())
+
+
 def self_update():
     """מוריד את הגרסה האחרונה של הקבצים מ-GitHub (חינם). אם הסקריפט עצמו השתנה, מריץ את עצמו מחדש."""
     import urllib.request
@@ -869,7 +880,7 @@ def main():
     # אותה תכנית, אותו מייל ואותם שינויים מאושרים כמו בריצה הקודמת? לא בונים מחדש ולא שואלים שוב.
     import hashlib
     overrides = load_overrides()
-    fp = hashlib.sha256((plan_path.read_bytes() if plan_path else b"") +
+    fp = hashlib.sha256((plan_path.read_bytes() if plan_path else b"") + TEMPLATE.read_bytes() + Path(__file__).read_bytes() +
                         json.dumps([email_rows, overrides], ensure_ascii=False, sort_keys=True, default=str).encode()).hexdigest()
     state_file = OUTPUT_DIR / ".last_run.json"
     try:
@@ -879,7 +890,7 @@ def main():
     if not args.force and last.get("fp") == fp and Path(last.get("out", "")).exists():
         log(f"= אין שינוי מאז הריצה הקודמת ({last.get('at')}). פותח את הלוז הקיים.")
         if not args.no_open:
-            webbrowser.open(Path(last["out"]).as_uri())
+            open_schedule(Path(last["out"]))
         return
 
     now = dt.datetime.now()
@@ -897,7 +908,7 @@ def main():
     if plan_path:   # גם בהעלאה ידנית, וגם בלי סריאלים (הטכנאי רואה לפחות את הלוז): מתעדכן אצל הטכנאי ונשמר בארכיון
         publish_to_viewer(plan_rows, email_rows, {k: v for k, v in source.items() if k != "banner"})
     if not args.no_open:
-        webbrowser.open(out.as_uri())
+        open_schedule(out)
 
     # כספת לאילת באחד הימים: צריך להכין אותה עד יום ראשון של אותו שבוע
     if plan_path:
