@@ -1,0 +1,19 @@
+{
+  "name": "לוז התקנות",
+  "short_name": "לוז התקנות",
+  "description": "לוז התקנות והחלפות כספות לשבוע",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/lz-viewer/",
+  "scope": "/lz-viewer/",
+  "id": "/lz-viewer/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d6b5c",
+  "theme_color": "#0d6b5c",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
