@@ -281,6 +281,7 @@ function compare(p, e){
   const dayLbl = x => `${DAYS[toUTC(x).getUTCDay()]} ${dm(x)}`;
   if (p.date !== e.date) d.push(`יום שונה: בתכנית ${dayLbl(p.date)}, במייל ${dayLbl(e.date)}`);
   if (devNo(e.device) && devNo(p.device) && devNo(p.device) !== devNo(e.device)) d.push(`מספר כספת שונה: בתכנית ${p.device || "—"}, במייל ${e.device}`);
+  if (!devNo(e.device) && devNo(p.device)) d.push(`מספר כספת חסר בטבלת הסריאלים (לפי האקסל: ${p.device})`);
   return d;
 }
 function buildItems(){
