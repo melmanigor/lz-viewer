@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="he"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}[hidden]{display:none!important}</style></head><body>
+<title>לוז התקנות שבועי</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700&family=Rubik:wght@500;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: dispatcher's board. Two intake slots on top, a status strip, then one column per working day, teams stacked inside. */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --ink:#18231f; --muted:#5d6b65; --line:#d8dfdb;
+  --accent:#0d6b5c; --accent-soft:#e1f0ec;
+  --ok:#1f7a45; --ok-soft:#e3f3e8; --warn:#a85d00; --warn-soft:#fdf0dc; --bad:#b3261e; --bad-soft:#fbe5e3; --wait:#56657a; --wait-soft:#e8ecf2;
+  --f-display:"Rubik","Heebo",system-ui,sans-serif; --f-body:"Heebo",system-ui,-apple-system,"Segoe UI",Arial,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#1a2320; --ink:#e6eeea; --muted:#9aaba4; --line:#2c3935;
+  --accent:#4fc0a8; --accent-soft:#17332d;
+  --ok:#5cc98a; --ok-soft:#173023; --warn:#f0a94a; --warn-soft:#352812; --bad:#f28b82; --bad-soft:#3a1d1b; --wait:#a3b2c6; --wait-soft:#222b36; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#1a2320; --ink:#e6eeea; --muted:#9aaba4; --line:#2c3935;
+  --accent:#4fc0a8; --accent-soft:#17332d;
+  --ok:#5cc98a; --ok-soft:#173023; --warn:#f0a94a; --warn-soft:#352812; --bad:#f28b82; --bad-soft:#3a1d1b; --wait:#a3b2c6; --wait-soft:#222b36; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+.wrap{direction:rtl;max-width:1500px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0}
+h1{font-size:1.6rem}
+h2{font-size:1.15rem}
+.top{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px}
+.sub{color:var(--muted);margin:2px 0 0}
+.intake{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.slot{background:var(--surface);border:1.5px dashed var(--line);border-radius:10px;padding:14px 16px;display:flex;gap:14px;align-items:center;min-width:0;transition:border-color .15s}
+.slot.drag{border-color:var(--accent)}
+.slot .ic{flex:none;width:40px;height:40px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-family:var(--f-display);font-weight:700}
+.slot .txt{min-width:0;flex:1}
+.slot b{display:block}
+.slot .st{color:var(--muted);font-size:.85rem;overflow-wrap:anywhere}
+.slot .st.err{color:var(--bad)}
+.slot .st.busy{color:var(--accent)}
+.btn{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:7px 14px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface)}
+.btn:focus-visible,.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn[disabled]{opacity:.5;cursor:default}
+input[type=file]{display:none}
+.bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between}
+.week{display:flex;align-items:center;gap:8px}
+.week .lbl{font-family:var(--f-display);font-weight:700;font-size:1.1rem;font-variant-numeric:tabular-nums;min-width:12ch;text-align:center}
+.filters{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.filters span{color:var(--muted);font-size:.85rem;margin-inline-end:4px}
+.chip{font:inherit;font-size:.85rem;border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:3px 12px;cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);border-color:var(--accent);font-weight:500}
+.stats{display:flex;flex-wrap:wrap;gap:8px}
+.stat{display:flex;align-items:center;gap:8px;border-radius:8px;padding:6px 12px;font-size:.9rem;background:var(--surface);border:1px solid var(--line)}
+.stat b{font-family:var(--f-display);font-size:1.15rem;font-variant-numeric:tabular-nums}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.s-ok .dot,.card.s-ok{--c:var(--ok);--cs:var(--ok-soft)}
+.s-warn .dot,.card.s-warn{--c:var(--warn);--cs:var(--warn-soft)}
+.s-missing .dot,.card.s-missing{--c:var(--bad);--cs:var(--bad-soft)}
+.s-extra .dot,.card.s-extra{--c:var(--bad);--cs:var(--bad-soft)}
+.s-pending .dot,.card.s-pending{--c:var(--wait);--cs:var(--wait-soft)}
+.dot{background:var(--c)}
+.board{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+@media (min-width:700px){.board{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (min-width:1100px){.board{grid-template-columns:repeat(var(--n,5),minmax(0,1fr))}}
+.day{display:flex;flex-direction:column;gap:10px;min-width:0}
+.dayhead{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:4px}
+.dayhead h3{font-size:1.1rem}
+.dayhead .d{font-family:var(--f-mono);color:var(--muted);font-size:.85rem}
+.team{font-size:.75rem;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-top:4px}
+.card{background:var(--surface);border:1px solid var(--line);border-inline-start:4px solid var(--c);border-radius:8px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.card .row1{display:flex;justify-content:space-between;gap:8px;align-items:start}
+.card .site{font-weight:700;line-height:1.3;overflow-wrap:anywhere}
+.pill{flex:none;font-size:.75rem;font-weight:700;border-radius:4px;padding:1px 7px;background:var(--cs);color:var(--c)}
+.meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.85rem;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+.serial{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:6px;padding:5px 8px;font-size:.9rem}
+.serial .k{color:var(--muted);font-size:.75rem}
+.serial .v{font-family:var(--f-mono);font-weight:500;overflow-wrap:anywhere}
+.serial .v.txt{font-family:var(--f-body);font-weight:400;font-size:.85rem}
+.serial .none{color:var(--bad);font-weight:500;font-size:.85rem}
+.tags{display:flex;flex-wrap:wrap;gap:4px}
+.tag{font-size:.72rem;border:1px solid var(--line);border-radius:4px;padding:0 6px;color:var(--muted)}
+.diffs{margin:0;padding:6px 10px;list-style:none;background:var(--cs);border-radius:6px;font-size:.84rem;color:var(--ink);display:flex;flex-direction:column;gap:2px}
+.diffs li::before{content:"• ";color:var(--c);font-weight:700}
+details{font-size:.84rem;color:var(--muted)}
+details summary{cursor:pointer;width:max-content}
+.empty{color:var(--muted);font-size:.9rem;padding:8px 0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.issues{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem;min-width:640px}
+th,td{text-align:start;padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:.8rem}
+.note{font-size:.85rem;color:var(--muted)}
+.banner{background:var(--accent-soft);color:var(--ink);border-radius:8px;padding:8px 12px;font-size:.88rem}
+.toast{position:fixed;bottom:calc(16px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:.9rem}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>לוז התקנות שבועי</h1>
+      <p class="sub">הצלבה בין תכנית ההתקנות (אקסל) לבין טבלת הסריאלים מברינקס (צילום מסך)</p>
+    </div>
+    <button class="btn" id="copyBtn" type="button">העתק לוז כטקסט</button>
+  </header>
+
+  <section class="intake" aria-label="קבצים">
+    <label class="slot" id="planSlot" for="planInput">
+      <span class="ic" aria-hidden="true">XLS</span>
+      <span class="txt"><b>תכנית התקנות</b><span class="st" id="planStatus"></span></span>
+      <span class="btn">בחר קובץ</span>
+      <input type="file" id="planInput" accept=".xlsx,.xls,.xlsm">
+    </label>
+    <label class="slot" id="imgSlot" for="imgInput">
+      <span class="ic" aria-hidden="true">IMG</span>
+      <span class="txt"><b>צילום המייל מברינקס</b><span class="st" id="imgStatus"></span></span>
+      <span class="btn">בחר תמונה</span>
+      <input type="file" id="imgInput" accept="image/png,image/jpeg,image/webp" multiple>
+    </label>
+  </section>
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="bar">
+    <div class="week">
+      <button class="btn" id="prevW" type="button" aria-label="שבוע קודם">→</button>
+      <span class="lbl" id="weekLbl"></span>
+      <button class="btn" id="nextW" type="button" aria-label="שבוע הבא">←</button>
+    </div>
+    <div class="filters" id="filters"><span>סוג משימה:</span></div>
+  </section>
+  <div class="stats" id="stats"></div>
+
+  <section class="board" id="board" aria-label="לוז השבוע"></section>
+
+  <section class="panel">
+    <h2>פערים לבדיקה</h2>
+    <div class="issues" id="issues"></div>
+  </section>
+  <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+const SAMPLE_PLAN = /*__PLAN__*/[];
+const SAMPLE_EMAIL = /*__EMAIL__*/[];
+const SOURCE = /*__SOURCE__*/{};
+
+const DAYS = ["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"];
+const TASKS = ["התקנה","החלפה","הזזה","פירוק"];
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store = { get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch{ return d; } }, set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} } };
+
+const state = {
+  plan: [], email: [], planName: "", imgName: "",
+  tasks: new Set(["התקנה","החלפה"]),   // רק התקנה והחלפה, בלי בחירה
+  week: null, sample: true,
+};
+
+/* ---------- dates ---------- */
+const pad = n => String(n).padStart(2,"0");
+const ymd = d => `${d.getUTCFullYear()}-${pad(d.getUTCMonth()+1)}-${pad(d.getUTCDate())}`;
+const toUTC = s => new Date(s + "T00:00:00Z");
+function parseDate(v){
+  if (v == null || v === "") return null;
+  if (typeof v === "number" && v > 20000 && v < 80000) return ymd(new Date(Date.UTC(1899,11,30) + Math.round(v)*86400000));
+  if (v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${pad(v.getMonth()+1)}-${pad(v.getDate())}`;
+  const s = String(v).trim();
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if (m) return `${m[1]}-${pad(m[2])}-${pad(m[3])}`;
+  m = s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{2,4})$/); if (m) { const y = m[3].length===2 ? "20"+m[3] : m[3]; return `${y}-${pad(m[2])}-${pad(m[1])}`; }
+  return null;
+}
+const weekOf = d => { const t = toUTC(d); t.setUTCDate(t.getUTCDate() - t.getUTCDay()); return ymd(t); };
+const addDays = (d,n) => { const t = toUTC(d); t.setUTCDate(t.getUTCDate()+n); return ymd(t); };
+const dm = d => { const [y,m,dd] = d.split("-"); return `${+dd}/${+m}`; };
+
+/* ---------- normalizers ---------- */
+const clean = v => String(v ?? "").replace(/\s+/g," ").trim();
+const devNo = v => String(v ?? "").replace(/\D/g,"");
+const flag = v => /^v$|^כן$|^true$|✓|✔/i.test(clean(v)) || v === true;
+function normTask(v){ const s = clean(v); for (const t of TASKS) if (s.includes(t)) return t; return s || "אחר"; }
+function normModel(v){
+  const s = clean(v).toUpperCase(); if (!s) return "";
+  const coins = /מטבעות/.test(s);
+  return s.replace(/מטבעות/g,"").replace(/[^A-Z0-9]/g,"") + (coins ? "+מטבעות" : "");
+}
+const siteTokens = s => clean(s).split(/-לקוח|–|\(/)[0].replace(/[^\p{L}\p{N}\s]/gu," ").split(/\s+/).filter(w => w.length > 1);
+function siteSim(a,b){
+  const A = siteTokens(a), B = new Set(siteTokens(b)); if (!A.length || !B.size) return 0;
+  const common = A.filter(w => B.has(w)).length; return common / Math.min(A.length, B.size);
+}
+
+/* ---------- plan (Excel) ---------- */
+const KEEP = new Set(["התקנה","החלפה"]);
+function parsePlan(aoa){
+  const hIdx = aoa.findIndex(r => r && r.some(c => clean(c) === "שם אתר"));
+  if (hIdx < 0) throw new Error("לא נמצאה שורת כותרת עם 'שם אתר'");
+  const H = aoa[hIdx].map(clean);
+  const col = (...keys) => { for (const k of keys){ const i = H.findIndex(h => h === k); if (i >= 0) return i; } for (const k of keys){ const i = H.findIndex(h => h && h.includes(k)); if (i >= 0) return i; } return -1; };
+  const C = { date: col("תאריך"), day: col("יום"), site: col("שם אתר"), region: col("מבצע"), supplier: col("ספק"), device: col("מספר כספת/מכשיר","מספר כספת","מכשיר"),
+    model: col("דגם"), ins: col("ביטוח ברינקס","ביטוח"), plate: col("פלטת יציקה","פלטה"), notes: col("הערות"), contact: col("איש קשר"), address: col("כתובת") };
+  // the task-type column has no header: pick the column whose cells most often read התקנה/החלפה/הזזה/פירוק
+  let best = -1, bestN = 0; const width = Math.max(...aoa.slice(hIdx, hIdx+400).map(r => r ? r.length : 0));
+  for (let c = 0; c < width; c++){ if (c === C.notes) continue; let n = 0; for (const r of aoa.slice(hIdx+1, hIdx+400)) if (r && /^(התקנה|החלפה|הזזה|פירוק)/.test(clean(r[c]))) n++; if (n > bestN){ bestN = n; best = c; } }
+  C.task = best;
+  const out = []; let cur = null, team = 1, order = 0;
+  for (const r of aoa.slice(hIdx+1)){
+    if (!r) continue;
+    if (clean(r[C.site]) === "שם אתר") continue;
+    const d = parseDate(r[C.date]); if (d){ cur = d; team = 1; }
+    const site = clean(r[C.site]);
+    const tm = site.match(/^צוות\s*(\d+)/); if (tm){ team = +tm[1]; continue; }
+    if (!cur || (!site && !devNo(r[C.device]))) continue;
+    out.push({ date: cur, team, order: order++, site, region: clean(r[C.region]), supplier: clean(r[C.supplier]), device: clean(r[C.device]),
+      model: clean(r[C.model]), ins: flag(r[C.ins]), plate: flag(r[C.plate]), task: C.task >= 0 ? normTask(r[C.task]) : "אחר",
+      notes: clean(r[C.notes]), contact: clean(r[C.contact]), address: clean(r[C.address]) });
+  }
+  return out.filter(p => KEEP.has(p.task));   // רק התקנה והחלפה: הזזה, פירוק וכל השאר לא נכנסים בכלל
+}
+
+/* ---------- email (image read by Claude) ---------- */
+const IMG_PROMPT = `התמונה היא צילום מסך של מייל מחברת ברינקס עם טבלה (אחת או יותר) של סריאלים לכספות.
+עמודות הטבלה (מימין לשמאל): תאריך, יום, שם אתר, ספק, מספר כספת/מכשיר, דגם, ביטוח ברינקס, מגן קיר, בסיס, פלטת יציקה, סוג משימה, סריאלי.
+תא התאריך והיום ממוזג לכמה שורות: החל אותו על כל השורות בקבוצה. התעלם משורות הכותרת שחוזרות.
+העתק כל שורת נתונים בדיוק כפי שהיא כתובה, כולל טקסט אדום שמצורף לשם האתר. תא ריק = מחרוזת ריקה. אם אינך בטוח בספרה, תן את הקריאה הסבירה ביותר.
+החזר JSON בלבד בצורה:
+{"rows":[{"date":"YYYY-MM-DD","day":"ראשון","site":"","supplier":"","device":"","model":"","insurance":false,"plate":false,"task":"","serial":""}]}`;
+
+async function readImages(files){
+  const st = $("imgStatus");
+  const sample = window.claude?.use ? await claude.use("sample").catch(() => null) : null;
+  if (!sample){ st.className = "st err"; st.textContent = "קריאת תמונה זמינה רק בגרסה שב-claude.ai. הסקריפט קורא את המייל בעצמו."; return; }
+  st.className = "st busy"; st.textContent = "Claude קורא את הטבלה מהתמונה… (עד דקה)";
+  try{
+    const res = await sample.json(IMG_PROMPT, { images: [...files], modelTier: "complex" });
+    const rows = (res && res.rows) || [];
+    if (!rows.length) throw { code: "empty" };
+    state.email = rows.map((r,i) => ({ date: parseDate(r.date), day: clean(r.day), site: clean(r.site), supplier: clean(r.supplier), device: clean(r.device),
+      model: clean(r.model), ins: !!r.insurance, plate: !!r.plate, task: normTask(r.task), serial: clean(r.serial), order: i })).filter(r => r.date && KEEP.has(r.task));
+    state.imgName = [...files].map(f => f.name).join(", ");
+    state.sample = false; state.week = null;
+    st.className = "st"; st.textContent = `${state.imgName}: נקראו ${state.email.length} שורות`;
+    render();
+  }catch(e){
+    st.className = "st err";
+    st.textContent = e && e.code === "not_granted" ? "לא אושרה גישה ל-Claude, אי אפשר לקרוא את התמונה"
+      : e && e.code === "rate_limited" ? "יותר מדי בקשות. נסה שוב בעוד דקה"
+      : e && e.code === "empty" ? "לא נמצאו שורות בטבלה. נסה צילום חד יותר או חתוך רק את הטבלה"
+      : "הקריאה נכשלה. נסה שוב או העלה צילום ברור יותר";
+  }
+}
+
+/* ---------- matching ---------- */
+function compare(p, e){
+  const d = [];
+  const dayLbl = x => `${DAYS[toUTC(x).getUTCDay()]} ${dm(x)}`;
+  if (p.date !== e.date) d.push(`יום שונה: בתכנית ${dayLbl(p.date)}, במייל ${dayLbl(e.date)}`);
+  if (devNo(e.device) && devNo(p.device) && devNo(p.device) !== devNo(e.device)) d.push(`מספר כספת שונה: בתכנית ${p.device || "—"}, במייל ${e.device}`);
+  return d;
+}
+function buildItems(){
+  const plan = state.plan, used = new Set(), items = [];
+  for (const e of state.email){
+    const dn = devNo(e.device); let pi = -1;
+    if (dn){
+      pi = plan.findIndex((p,i) => !used.has(i) && devNo(p.device) === dn && p.date === e.date);
+      if (pi < 0) pi = plan.findIndex((p,i) => !used.has(i) && devNo(p.device) === dn && Math.abs(toUTC(p.date) - toUTC(e.date)) <= 7*864e5);
+    }
+    if (pi < 0){
+      let best = 0.6;
+      plan.forEach((p,i) => { if (used.has(i) || Math.abs(toUTC(p.date) - toUTC(e.date)) > 7*864e5) return; const s = siteSim(p.site, e.site) + (p.date === e.date ? 0.01 : 0); if (s >= best){ best = s; pi = i; } });
+    }
+    if (pi >= 0){ used.add(pi); const p = plan[pi]; const diffs = compare(p, e);
+      items.push({ date: p.date, team: p.team, order: p.order, p, e, diffs, status: diffs.length ? "warn" : "ok" }); }
+    else items.push({ date: e.date, team: 99, order: 1e6 + e.order, p: null, e, diffs: ["לא מופיע בתכנית ההתקנות"], status: "extra" });
+  }
+  const emailDates = new Set(state.email.map(e => e.date));
+  plan.forEach((p,i) => { if (used.has(i)) return;
+    const missing = emailDates.has(p.date);
+    items.push({ date: p.date, team: p.team, order: p.order, p, e: null, diffs: missing ? ["לא מופיע במייל של ברינקס"] : [], status: missing ? "missing" : "pending" }); });
+  return items;
+}
+const itemTask = it => (it.p || it.e).task;
+
+/* ---------- render ---------- */
+const STATUS = { ok: ["תואם","s-ok"], warn: ["פער","s-warn"], missing: ["חסר במייל","s-missing"], extra: ["לא בתכנית","s-extra"], pending: ["ממתין לסריאל","s-pending"] };
+
+function renderFilters(){ $("filters").style.display = "none"; return;
+  const f = $("filters"); f.querySelectorAll(".chip").forEach(c => c.remove());
+  const present = new Set(state.plan.map(p => p.task).concat(state.email.map(e => e.task)));
+  const list = TASKS.concat([...present].filter(t => !TASKS.includes(t)));
+  for (const t of list){
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = t;
+    b.setAttribute("aria-pressed", state.tasks.has(t));
+    b.onclick = () => { state.tasks.has(t) ? state.tasks.delete(t) : state.tasks.add(t); store.set("tasks", [...state.tasks]); render(); };
+    f.appendChild(b);
+  }
+}
+
+function card(it){
+  const p = it.p, e = it.e, src = p || e;
+  const [label, cls] = STATUS[it.status];
+  const tags = [];
+  if ((p && p.plate) || (e && e.plate)) tags.push("פלטת יציקה");
+  if ((p && p.ins) || (e && e.ins)) tags.push("ביטוח ברינקס");
+  if (p && e && !devNo(e.device) && devNo(p.device)) tags.push("מספר כספת הושלם מהאקסל");
+  if (p && p.override) tags.push("עודכן לפי תשובת ברינקס (אישרת)");
+  const serial = e ? e.serial : "";
+  const serialHtml = !e ? `<span class="k">סריאל</span><span class="note">עוד לא התקבל</span>`
+    : /\d/.test(serial) && serial.length < 24 ? `<span class="k">סריאל</span><span class="v">${esc(serial)}</span>`
+    : serial ? `<span class="k">סריאל</span><span class="v txt">${esc(serial)}</span>`
+    : `<span class="k">סריאל</span><span class="none">חסר</span>`;
+  const more = p && (p.contact || p.address || p.notes) ? `<details><summary>פרטי אתר</summary>
+      ${p.address ? `<div>כתובת: ${esc(p.address)}</div>` : ""}${p.contact ? `<div>איש קשר: ${esc(p.contact)}</div>` : ""}${p.notes ? `<div>הערות: ${esc(p.notes)}</div>` : ""}</details>` : "";
+  return `<article class="card ${cls}">
+    <div class="row1"><span class="site">${esc(src.site)}</span><span class="pill">${label}</span></div>
+    <div class="meta"><span>${esc(src.task)}</span><span>${esc(src.supplier)}</span><span>${esc(src.model)}</span><span>כספת <span class="mono">${esc((p && p.device) || (e && e.device) || "—")}</span></span>${p && p.region ? `<span>${esc(p.region)}</span>` : ""}</div>
+    <div class="serial">${serialHtml}</div>
+    ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${t}</span>`).join("")}</div>` : ""}
+    ${it.diffs.length && it.status !== "missing" && it.status !== "extra" ? `<ul class="diffs">${it.diffs.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}
+    ${more}
+  </article>`;
+}
+
+let lastVisible = [];
+function render(){
+  const all = buildItems().filter(it => state.tasks.has(itemTask(it)));
+  const weeks = [...new Set(buildItems().map(it => weekOf(it.date)))].sort();
+  if (!state.week || !weeks.includes(state.week)){
+    const ed = state.email.map(e => e.date).sort()[0];
+    state.week = ed ? weekOf(ed) : weeks[weeks.length-1] || weekOf(ymd(new Date()));
+  }
+  const wi = weeks.indexOf(state.week);
+  $("prevW").disabled = wi <= 0; $("nextW").disabled = wi < 0 || wi >= weeks.length-1;
+  $("weekLbl").textContent = `${dm(state.week)} – ${dm(addDays(state.week,6))}`;
+
+  const items = all.filter(it => weekOf(it.date) === state.week).sort((a,b) => a.date.localeCompare(b.date) || a.team - b.team || a.order - b.order);
+  lastVisible = items;
+  renderFilters();
+
+  const count = k => items.filter(i => i.status === k).length;
+  $("stats").innerHTML = Object.entries(STATUS).map(([k,[l,c]]) => `<span class="stat ${c}"><span class="dot"></span><b>${count(k)}</b>${l}</span>`).join("");
+
+  const days = []; for (let i = 0; i < 7; i++){ const d = addDays(state.week, i); const di = items.filter(x => x.date === d); if (di.length) days.push([d, di]); }
+  $("board").style.setProperty("--n", Math.max(days.length,1));
+  if (!days.length) days.push([state.week, []]);
+  $("board").innerHTML = days.map(([d, di]) => {
+    let html = `<div class="day"><div class="dayhead"><h3>יום ${DAYS[toUTC(d).getUTCDay()]}</h3><span class="d">${dm(d)}</span></div>`;
+    if (!di.length) html += `<div class="empty">אין משימות</div>`;
+    for (const it of di) html += card(it);
+    return html + `</div>`;
+  }).join("");
+
+  const issues = items.filter(i => i.status !== "ok" && i.status !== "pending");
+  $("issues").innerHTML = issues.length ? `<table><thead><tr><th>תאריך</th><th>אתר</th><th>כספת</th><th>מצב</th><th>מה לבדוק</th></tr></thead><tbody>${
+    issues.map(i => `<tr><td class="mono">${dm(i.date)}</td><td>${esc((i.p||i.e).site)}</td><td class="mono">${esc((i.p&&i.p.device)||(i.e&&i.e.device)||"—")}</td><td><span class="stat ${STATUS[i.status][1]}" style="padding:1px 8px"><span class="dot"></span>${STATUS[i.status][0]}</span></td><td>${i.diffs.map(esc).join("<br>")}</td></tr>`).join("")}</tbody></table>`
+    : `<div class="empty">אין פערים בשבוע הזה.</div>`;
+
+  const b = $("banner");
+  b.hidden = !state.sample;
+  b.textContent = SOURCE.banner || "";
+  if (!$("planStatus").textContent || state.sample) $("planStatus").textContent = state.planName ? `${state.planName}: ${state.plan.length} שורות` : "";
+}
+
+/* ---------- copy ---------- */
+function scheduleText(){
+  const byDay = {};
+  for (const it of lastVisible) (byDay[it.date] ||= []).push(it);
+  let out = `לוז התקנות ${dm(state.week)}–${dm(addDays(state.week,6))}\n`;
+  for (const d of Object.keys(byDay).sort()){
+    out += `\nיום ${DAYS[toUTC(d).getUTCDay()]} ${dm(d)}\n`;
+    for (const it of byDay[d]){
+      const src = it.p || it.e;
+      const serial = it.e && /\d/.test(it.e.serial) ? ` | סריאל ${it.e.serial}` : "";
+      const warn = it.status === "ok" || it.status === "pending" ? "" : ` (${STATUS[it.status][0]})`;
+      out += `- ${src.site} | ${src.task} | ${src.model} | כספת ${(it.p && it.p.device) || (it.e && it.e.device) || "—"}${serial}${warn}\n`;
+    }
+  }
+  return out;
+}
+function toast(msg){ const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 2200); }
+$("copyBtn").onclick = () => {
+  const text = scheduleText();
+  navigator.clipboard.writeText(text).then(() => toast("הלוז הועתק"), () => {
+    const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); toast("הלוז הועתק"); }catch{ toast("ההעתקה נחסמה בדפדפן"); } ta.remove();
+  });
+};
+
+/* ---------- intake ---------- */
+async function loadPlanFile(file){
+  const st = $("planStatus");
+  try{
+    if (typeof XLSX === "undefined") throw new Error("ספריית האקסל לא נטענה");
+    const wb = XLSX.read(await file.arrayBuffer(), { type: "array" });
+    let rows = null;
+    for (const n of wb.SheetNames){ const aoa = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: null }); if (aoa.some(r => r && r.some(c => clean(c) === "שם אתר"))){ rows = aoa; break; } }
+    if (!rows) throw new Error("לא נמצא גיליון עם עמודת 'שם אתר'");
+    state.plan = parsePlan(rows); state.planName = file.name; state.week = null;
+    if (state.sample){ state.email = []; state.imgName = ""; $("imgStatus").textContent = "העלה את צילום המייל של השבוע"; }
+    state.sample = false;
+    st.className = "st"; st.textContent = `${file.name}: ${state.plan.length} שורות`;
+    render();
+  }catch(e){ st.className = "st err"; st.textContent = "לא הצלחתי לקרוא את הקובץ: " + (e.message || e); }
+}
+function wireSlot(slot, input, handler){
+  input.onchange = () => { if (input.files.length) handler(input.files); input.value = ""; };
+  slot.addEventListener("dragover", e => { e.preventDefault(); slot.classList.add("drag"); });
+  slot.addEventListener("dragleave", () => slot.classList.remove("drag"));
+  slot.addEventListener("drop", e => { e.preventDefault(); slot.classList.remove("drag"); if (e.dataTransfer.files.length) handler(e.dataTransfer.files); });
+}
+wireSlot($("planSlot"), $("planInput"), fs => loadPlanFile(fs[0]));
+wireSlot($("imgSlot"), $("imgInput"), fs => readImages([...fs].filter(f => f.type.startsWith("image/"))));
+document.addEventListener("paste", e => {
+  const imgs = [...(e.clipboardData?.files || [])].filter(f => f.type.startsWith("image/"));
+  if (imgs.length){ e.preventDefault(); readImages(imgs); }
+});
+$("prevW").onclick = () => { const w = [...new Set(buildItems().map(i => weekOf(i.date)))].sort(); const i = w.indexOf(state.week); if (i > 0){ state.week = w[i-1]; render(); } };
+$("nextW").onclick = () => { const w = [...new Set(buildItems().map(i => weekOf(i.date)))].sort(); const i = w.indexOf(state.week); if (i < w.length-1){ state.week = w[i+1]; render(); } };
+
+/* ---------- start with the 20/11 files ---------- */
+state.plan = parsePlan(SAMPLE_PLAN); state.planName = SOURCE.planName || "";
+state.email = SAMPLE_EMAIL.map((r,i) => ({ ...r, task: normTask(r.task), order: i })).filter(e => KEEP.has(e.task));
+for (const o of (SOURCE.overrides || [])){
+  const k = devNo(o.device_in_plan); if (!k) continue;
+  const target = o.field === "device" ? devNo(o.value) : k;
+  for (const p of state.plan) if (devNo(p.device) === k){
+    if (o.field === "date" && parseDate(o.value)) p.date = parseDate(o.value);
+    if (o.field === "device" && devNo(o.value)) p.device = clean(o.value);
+    p.override = true;
+  }
+  if (o.field === "serial") for (const e of state.email) if ([k, target].includes(devNo(e.device))) e.serial = clean(o.value);
+}
+state.imgName = SOURCE.emailName || "";
+$("imgStatus").textContent = state.imgName ? `${state.imgName}: ${state.email.length} שורות` : "לא נמצא מייל סריאלים";
+if (SOURCE.note && !state.email.length){ $("imgStatus").className = "st err"; $("imgStatus").textContent = SOURCE.note; } else $("imgStatus").className = "st";
+render();
+</script>
+
+</body></html>
