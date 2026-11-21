@@ -257,7 +257,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.24 · 21/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.25 · 21/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal-bg" id="statModal" hidden><div class="modal stat-modal" role="dialog" aria-modal="true" aria-labelledby="smT">
@@ -440,8 +440,8 @@ function card(it){
     : /\d/.test(serial) && serial.length < 24 ? `<span class="k">סריאל</span><span class="v">${esc(serial)}</span>`
     : serial ? `<span class="k">סריאל</span><span class="v txt">${esc(serial)}</span>`
     : `<span class="k">סריאל</span><span class="none">חסר</span>`;
-  const more = p && (p.contact || p.address) ? `<details><summary>פרטי אתר</summary>
-      ${p.address ? `<div>כתובת: ${esc(p.address)}</div>` : ""}${p.contact ? `<div>איש קשר: ${esc(p.contact)}</div>` : ""}</details>` : "";
+  const more = p && (p.contact || p.address || p.notes) ? `<details><summary>פרטי אתר</summary>
+      ${p.address ? `<div>כתובת: ${esc(p.address)}</div>` : ""}${p.contact ? `<div>איש קשר: ${esc(p.contact)}</div>` : ""}${p.notes ? `<div>הערות: ${esc(p.notes)}</div>` : ""}</details>` : "";
   return `<article class="card ${cls}">
     <div class="tasktag ${src.task === "החלפה" ? "t-swap" : "t-new"}">${src.task === "החלפה" ? "⇄" : "＋"} ${esc(src.task)}</div>
     <div class="row1"><span class="site">${esc(src.site)}</span><span class="pill">${label}</span></div>
@@ -541,6 +541,7 @@ function noteHtml(p, task){
   const t = p.notes.replace(new RegExp("^\\s*" + task + "\\s*[,.]?\\s*"), "").trim();
   if (!t) return "";
   const cash = /שטרות/.test(t) || /^\d{3,5}$/.test(t);
+  if (!cash) return "";   // רק שטרות מודגש. שאר ההערות נמצאות ב"פרטי אתר"
   const txt = cash ? esc(t).replace(/(\d{3,5})(\s*שטרות)?/g, (m, n, w) => `<b>${n}${w || " שטרות"}</b>`) : esc(t);
   return `<div class="note-box${cash ? " cash" : ""}"><span class="ic" aria-hidden="true">${cash ? "💵" : "⚠️"}</span><span>${txt}</span></div>`;
 }

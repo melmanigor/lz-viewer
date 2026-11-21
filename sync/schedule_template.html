@@ -358,8 +358,8 @@ function card(it){
     : /\d/.test(serial) && serial.length < 24 ? `<span class="k">סריאל</span><span class="v">${esc(serial)}</span>`
     : serial ? `<span class="k">סריאל</span><span class="v txt">${esc(serial)}</span>`
     : `<span class="k">סריאל</span><span class="none">חסר</span>`;
-  const more = p && (p.contact || p.address) ? `<details><summary>פרטי אתר</summary>
-      ${p.address ? `<div>כתובת: ${esc(p.address)}</div>` : ""}${p.contact ? `<div>איש קשר: ${esc(p.contact)}</div>` : ""}</details>` : "";
+  const more = p && (p.contact || p.address || p.notes) ? `<details><summary>פרטי אתר</summary>
+      ${p.address ? `<div>כתובת: ${esc(p.address)}</div>` : ""}${p.contact ? `<div>איש קשר: ${esc(p.contact)}</div>` : ""}${p.notes ? `<div>הערות: ${esc(p.notes)}</div>` : ""}</details>` : "";
   return `<article class="card ${cls}">
     <div class="tasktag ${src.task === "החלפה" ? "t-swap" : "t-new"}">${src.task === "החלפה" ? "⇄" : "＋"} ${esc(src.task)}</div>
     <div class="row1"><span class="site">${esc(src.site)}</span><span class="pill">${label}</span></div>
@@ -447,6 +447,7 @@ function noteHtml(p, task){
   const t = p.notes.replace(new RegExp("^\\s*" + task + "\\s*[,.]?\\s*"), "").trim();
   if (!t) return "";
   const cash = /שטרות/.test(t) || /^\d{3,5}$/.test(t);
+  if (!cash) return "";   // רק שטרות מודגש. שאר ההערות נמצאות ב"פרטי אתר"
   const txt = cash ? esc(t).replace(/(\d{3,5})(\s*שטרות)?/g, (m, n, w) => `<b>${n}${w || " שטרות"}</b>`) : esc(t);
   return `<div class="note-box${cash ? " cash" : ""}"><span class="ic" aria-hidden="true">${cash ? "💵" : "⚠️"}</span><span>${txt}</span></div>`;
 }
