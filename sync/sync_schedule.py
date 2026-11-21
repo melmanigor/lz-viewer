@@ -890,6 +890,17 @@ def main():
         webbrowser.open(out.as_uri())
 
     if plan_path and email_rows:
+        # התקנה/החלפה שבאקסל ולא במייל הסריאלים: נשארות בלוז באותו יום, ומודיעים לך.
+        plan, pairs = match_pairs(plan_rows, email_rows)
+        matched = {pi for pi, _ in pairs if pi >= 0}
+        weeks = {week_of(e["date"]) for e in email_rows if e.get("date")}
+        missing = [p for i, p in enumerate(plan) if i not in matched and week_of(p["date"]) in weeks]
+        if missing:
+            log(f"! {len(missing)} משימות מהאקסל לא מופיעות במייל הסריאלים (נוספו ללוז באותו יום):")
+            for p in missing:
+                log(f"   - {p['date'][8:]}/{p['date'][5:7]} {p['site']} | {p['task']} | כספת {p['device'] or '—'}")
+            names = ", ".join(p["site"] for p in missing[:3]) + ("…" if len(missing) > 3 else "")
+            notify(f"לוז התקנות: {len(missing)} משימות חסרות במייל הסריאלים", names)
         gaps = find_gaps(plan_rows, email_rows)
         if not gaps:
             log("✓ אין פערים במספרי כספות או בימים. לא הוכן מייל.")

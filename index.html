@@ -357,16 +357,16 @@ function buildItems(){
       items.push({ date: p.date, team: p.team, order: p.order, p, e, diffs, status: diffs.length ? "warn" : "ok" }); }
     else items.push({ date: e.date, team: 99, order: 1e6 + e.order, p: null, e, diffs: ["לא מופיע בתכנית ההתקנות"], status: "extra" });
   }
-  const emailDates = new Set(state.email.map(e => e.date));
+  const emailWeeks = new Set(state.email.map(e => weekOf(e.date)));   // באקסל ולא במייל של אותו שבוע: נשאר באותו יום ומסומן
   plan.forEach((p,i) => { if (used.has(i)) return;
-    const missing = emailDates.has(p.date);
-    items.push({ date: p.date, team: p.team, order: p.order, p, e: null, diffs: missing ? ["לא מופיע במייל של ברינקס"] : [], status: missing ? "missing" : "pending" }); });
+    const missing = emailWeeks.has(weekOf(p.date));
+    items.push({ date: p.date, team: p.team, order: p.order, p, e: null, diffs: missing ? ["לא מופיע במייל הסריאלים. נוסף מהאקסל לאותו יום"] : [], status: missing ? "missing" : "pending" }); });
   return items;
 }
 const itemTask = it => (it.p || it.e).task;
 
 /* ---------- render ---------- */
-const STATUS = { ok: ["תואם","s-ok"], warn: ["פער","s-warn"], missing: ["חסר במייל","s-missing"], extra: ["לא בתכנית","s-extra"], pending: ["ממתין לסריאל","s-pending"] };
+const STATUS = { ok: ["תואם","s-ok"], warn: ["פער","s-warn"], missing: ["חסר במייל, נוסף מהאקסל","s-missing"], extra: ["לא בתכנית","s-extra"], pending: ["ממתין לסריאל","s-pending"] };
 
 function renderFilters(){ $("filters").style.display = "none"; return;
   const f = $("filters"); f.querySelectorAll(".chip").forEach(c => c.remove());
