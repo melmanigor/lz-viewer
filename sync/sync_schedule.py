@@ -920,8 +920,9 @@ def main():
             log(f"🔔 כספת לאילת ({len(ps)}): להכין עד יום ראשון {sun.day}/{sun.month}")
             for p in ps:
                 log(f"   - {day_label(p['date'])} {p['site']} | {p['task']} | כספת {p['device'] or '—'}")
-            notify(f"כספת לאילת: להכין עד יום ראשון {sun.day}/{sun.month}",
-                   ", ".join(f"{p['site']} ({day_label(p['date'])})" for p in ps[:3]))
+            if args.auto:   # בהרצה רגילה ההודעה קופצת באתר אחרי הכניסה
+                notify(f"כספת לאילת: להכין עד יום ראשון {sun.day}/{sun.month}",
+                       ", ".join(f"{p['site']} ({day_label(p['date'])})" for p in ps[:3]))
 
     if plan_path and email_rows:
         # התקנה/החלפה שבאקסל ולא במייל הסריאלים: נשארות בלוז באותו יום, ומודיעים לך.
