@@ -80,9 +80,19 @@ input[type=file]{display:none}
 .pill{flex:none;font-size:.75rem;font-weight:700;border-radius:4px;padding:1px 7px;background:var(--cs);color:var(--c)}
 .meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.85rem;color:var(--muted)}
 .mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums;direction:ltr;unicode-bidi:isolate}
+.ids{display:flex;flex-direction:column;gap:6px}
+.idrow{display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px}
+.idrow .k{color:var(--muted);font-size:.8rem;min-width:66px}
+.idrow .v{font-family:var(--f-mono);font-weight:700;font-size:1.12rem;letter-spacing:.02em;color:var(--ink);overflow-wrap:anywhere}
+.idrow.safe{background:var(--accent-soft)}
+.idrow.safe .v{color:var(--accent)}
+.serial.idrow{font-size:1rem}
+.serial.idrow .v.txt{font-family:var(--f-body);font-weight:600;font-size:.95rem}
 .serial{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:6px;padding:5px 8px;font-size:.9rem}
 .serial .k{color:var(--muted);font-size:.75rem}
 .serial .v{font-family:var(--f-mono);font-weight:500;overflow-wrap:anywhere}
+.serial.idrow .v{font-weight:700;font-size:1.12rem;color:var(--ink)}
+.serial.idrow .k{font-size:.8rem;min-width:66px}
 .serial .v.txt{font-family:var(--f-body);font-weight:400;font-size:.85rem}
 .serial .none{color:var(--bad);font-weight:500;font-size:.85rem}
 .tags{display:flex;flex-wrap:wrap;gap:4px}
@@ -227,7 +237,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.17 · 21/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.18 · 21/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal-bg" id="eilatModal" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="emT">
@@ -409,8 +419,11 @@ function card(it){
       ${p.address ? `<div>כתובת: ${esc(p.address)}</div>` : ""}${p.contact ? `<div>איש קשר: ${esc(p.contact)}</div>` : ""}${p.notes ? `<div>הערות: ${esc(p.notes)}</div>` : ""}</details>` : "";
   return `<article class="card ${cls}">
     <div class="row1"><span class="site">${esc(src.site)}</span><span class="pill">${label}</span></div>
-    <div class="meta"><span>${esc(src.task)}</span><span>${esc(src.supplier)}</span><span>${esc(src.model)}</span><span>כספת <span class="mono">${esc((p && p.device) || (e && e.device) || "—")}</span></span>${p && p.region ? `<span>${esc(p.region)}</span>` : ""}</div>
-    <div class="serial">${serialHtml}</div>
+    <div class="meta"><span>${esc(src.task)}</span><span>${esc(src.supplier)}</span><span>${esc(src.model)}</span>${p && p.region ? `<span>${esc(p.region)}</span>` : ""}</div>
+    <div class="ids">
+      <div class="idrow safe"><span class="k">מספר כספת</span><span class="v">${esc((p && p.device) || (e && e.device) || "—")}</span></div>
+      <div class="serial idrow">${serialHtml}</div>
+    </div>
     ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${t}</span>`).join("")}</div>` : ""}
     ${it.diffs.length && it.status !== "missing" && it.status !== "extra" ? `<ul class="diffs">${it.diffs.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}
     ${more}
