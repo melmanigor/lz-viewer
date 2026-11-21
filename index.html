@@ -97,9 +97,10 @@ button.stat:hover{filter:brightness(.96)}
 .mailbox{display:flex;gap:8px;flex-wrap:wrap}
 #mailGaps.sent{background:var(--line);color:var(--muted);border-color:var(--line);cursor:default;pointer-events:none}
 .note-box{display:flex;gap:8px;align-items:flex-start;background:#fdecec;color:#9b1c1c;border:1px solid #f5b5b5;border-radius:8px;padding:7px 10px;font-weight:700;font-size:1rem}
+.note-box.tech{background:#e0f2fe;color:#075985;border-color:#7dd3fc}
 .note-box.cash{background:#fff4d6;color:#7a4d00;border-color:#f0c24b}
 .note-box b{font-size:1.15rem}
-@media (prefers-color-scheme: dark){.note-box{background:#3a1d1b;color:#f8c5c0;border-color:#7a2e28}.note-box.cash{background:#3a2c08;color:#ffe3a0;border-color:#8a6a14}}
+@media (prefers-color-scheme: dark){.note-box{background:#3a1d1b;color:#f8c5c0;border-color:#7a2e28}.note-box.cash{background:#3a2c08;color:#ffe3a0;border-color:#8a6a14}.note-box.tech{background:#0c2a3d;color:#bae6fd;border-color:#1e5a7a}}
 .ids{display:flex;flex-direction:column;gap:6px}
 .idrow{display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px}
 .idrow .k{color:var(--muted);font-size:.8rem;min-width:66px}
@@ -257,7 +258,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.26 · 21/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.27 · 21/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal-bg" id="statModal" hidden><div class="modal stat-modal" role="dialog" aria-modal="true" aria-labelledby="smT">
@@ -538,12 +539,17 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("statModal
 /* ---------- the Excel note (banknotes, stairs...) is shown big on the card ---------- */
 function noteHtml(p, task){
   if (!p || !p.notes) return "";
-  const t = p.notes.replace(/\s+/g, " ");
-  // a banknote count: "8000 שטרות", or a standalone 3-5 digit number like "התקנה 8000" (not stairs, not part of a serial)
-  const m = t.match(/(?<![\dA-Za-z])(\d{3,5})(?![\dA-Za-z])(?!\s*מדרג)/);
-  if (!m && !/שטרות/.test(t)) return "";
-  const txt = m ? `<b>${m[1]} שטרות</b>` : esc(t);
-  return `<div class="note-box cash"><span class="ic" aria-hidden="true">💵</span><span>${txt}</span></div>`;
+  const t = p.notes.replace(/\s+/g, " ").trim();
+  let out = "";
+  // banknotes: "8000 שטרות", or a standalone 3-5 digit number like "התקנה 8000" (not stairs, not part of a serial)
+  const m = t.match(/(?<![\dA-Za-z])(\d{3,5})(?![\dA-Za-z])(?!\s*(מדרג|ס"מ|ס״מ|מטר))/);
+  if (m || /שטרות/.test(t)) out += `<div class="note-box cash"><span class="ic" aria-hidden="true">💵</span><span>${m ? `<b>${m[1]} שטרות</b>` : esc(t)}</span></div>`;
+  // technical setup: SIM / network / reset instructions
+  if (/סים|SIM|לאפס|איפוס|ריסט|פרטנר|סלקום|פלאפון|גולן|הוט מובייל|להגדיר/i.test(t)){
+    const tech = t.replace(new RegExp("^" + task + "\\s*[,.]?\\s*"), "").replace(m ? m[0] : "\u0000", "").replace(/^[\s,.\-]+|[\s,.\-]+$/g, "").replace(/שטרות/, "").trim();
+    if (tech) out += `<div class="note-box tech"><span class="ic" aria-hidden="true">🛠️</span><span>${esc(tech)}</span></div>`;
+  }
+  return out;
 }
 
 /* ---------- copy ---------- */
