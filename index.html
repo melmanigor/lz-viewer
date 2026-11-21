@@ -96,6 +96,10 @@ button.stat:hover{filter:brightness(.96)}
 .sm-why{margin-top:6px;font-size:.9rem;color:var(--ink)}
 .mailbox{display:flex;gap:8px;flex-wrap:wrap}
 #mailGaps.sent{background:var(--line);color:var(--muted);border-color:var(--line);cursor:default;pointer-events:none}
+.note-box{display:flex;gap:8px;align-items:flex-start;background:#fdecec;color:#9b1c1c;border:1px solid #f5b5b5;border-radius:8px;padding:7px 10px;font-weight:700;font-size:1rem}
+.note-box.cash{background:#fff4d6;color:#7a4d00;border-color:#f0c24b}
+.note-box b{font-size:1.15rem}
+@media (prefers-color-scheme: dark){.note-box{background:#3a1d1b;color:#f8c5c0;border-color:#7a2e28}.note-box.cash{background:#3a2c08;color:#ffe3a0;border-color:#8a6a14}}
 .ids{display:flex;flex-direction:column;gap:6px}
 .idrow{display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px}
 .idrow .k{color:var(--muted);font-size:.8rem;min-width:66px}
@@ -253,7 +257,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.23 · 21/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.24 · 21/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal-bg" id="statModal" hidden><div class="modal stat-modal" role="dialog" aria-modal="true" aria-labelledby="smT">
@@ -436,8 +440,8 @@ function card(it){
     : /\d/.test(serial) && serial.length < 24 ? `<span class="k">סריאל</span><span class="v">${esc(serial)}</span>`
     : serial ? `<span class="k">סריאל</span><span class="v txt">${esc(serial)}</span>`
     : `<span class="k">סריאל</span><span class="none">חסר</span>`;
-  const more = p && (p.contact || p.address || p.notes) ? `<details><summary>פרטי אתר</summary>
-      ${p.address ? `<div>כתובת: ${esc(p.address)}</div>` : ""}${p.contact ? `<div>איש קשר: ${esc(p.contact)}</div>` : ""}${p.notes ? `<div>הערות: ${esc(p.notes)}</div>` : ""}</details>` : "";
+  const more = p && (p.contact || p.address) ? `<details><summary>פרטי אתר</summary>
+      ${p.address ? `<div>כתובת: ${esc(p.address)}</div>` : ""}${p.contact ? `<div>איש קשר: ${esc(p.contact)}</div>` : ""}</details>` : "";
   return `<article class="card ${cls}">
     <div class="tasktag ${src.task === "החלפה" ? "t-swap" : "t-new"}">${src.task === "החלפה" ? "⇄" : "＋"} ${esc(src.task)}</div>
     <div class="row1"><span class="site">${esc(src.site)}</span><span class="pill">${label}</span></div>
@@ -446,6 +450,7 @@ function card(it){
       <div class="idrow safe"><span class="k">מספר כספת</span><span class="v">${esc((p && p.device) || (e && e.device) || "—")}</span></div>
       <div class="serial idrow">${serialHtml}</div>
     </div>
+    ${noteHtml(p, src.task)}
     ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${t}</span>`).join("")}</div>` : ""}
     ${it.diffs.length && (it.status !== "missing" || it.e) && it.status !== "extra" ? `<ul class="diffs">${it.diffs.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}
     ${more}
@@ -529,6 +534,16 @@ $("stats").addEventListener("click", e => {
 $("smOk").onclick = () => { $("statModal").hidden = true; };
 $("statModal").addEventListener("click", e => { if (e.target.id === "statModal") $("statModal").hidden = true; });
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("statModal").hidden = true; });
+
+/* ---------- the Excel note (banknotes, stairs...) is shown big on the card ---------- */
+function noteHtml(p, task){
+  if (!p || !p.notes) return "";
+  const t = p.notes.replace(new RegExp("^\\s*" + task + "\\s*[,.]?\\s*"), "").trim();
+  if (!t) return "";
+  const cash = /שטרות/.test(t) || /^\d{3,5}$/.test(t);
+  const txt = cash ? esc(t).replace(/(\d{3,5})(\s*שטרות)?/g, (m, n, w) => `<b>${n}${w || " שטרות"}</b>`) : esc(t);
+  return `<div class="note-box${cash ? " cash" : ""}"><span class="ic" aria-hidden="true">${cash ? "💵" : "⚠️"}</span><span>${txt}</span></div>`;
+}
 
 /* ---------- copy ---------- */
 function scheduleText(){
