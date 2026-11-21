@@ -444,12 +444,12 @@ document.addEventListener("keydown", e => { if (e.key === "Escape") $("statModal
 /* ---------- the Excel note (banknotes, stairs...) is shown big on the card ---------- */
 function noteHtml(p, task){
   if (!p || !p.notes) return "";
-  const t = p.notes.replace(new RegExp("^\\s*" + task + "\\s*[,.]?\\s*"), "").trim();
-  if (!t) return "";
-  const cash = /שטרות/.test(t) || /^\d{3,5}$/.test(t);
-  if (!cash) return "";   // רק שטרות מודגש. שאר ההערות נמצאות ב"פרטי אתר"
-  const txt = cash ? esc(t).replace(/(\d{3,5})(\s*שטרות)?/g, (m, n, w) => `<b>${n}${w || " שטרות"}</b>`) : esc(t);
-  return `<div class="note-box${cash ? " cash" : ""}"><span class="ic" aria-hidden="true">${cash ? "💵" : "⚠️"}</span><span>${txt}</span></div>`;
+  const t = p.notes.replace(/\s+/g, " ");
+  // a banknote count: "8000 שטרות", or a standalone 3-5 digit number like "התקנה 8000" (not stairs, not part of a serial)
+  const m = t.match(/(?<![\dA-Za-z])(\d{3,5})(?![\dA-Za-z])(?!\s*מדרג)/);
+  if (!m && !/שטרות/.test(t)) return "";
+  const txt = m ? `<b>${m[1]} שטרות</b>` : esc(t);
+  return `<div class="note-box cash"><span class="ic" aria-hidden="true">💵</span><span>${txt}</span></div>`;
 }
 
 /* ---------- copy ---------- */
