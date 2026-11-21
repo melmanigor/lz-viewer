@@ -110,7 +110,7 @@ body.out header.top > div{width:100%}
 .lf input{font:inherit;font-size:1rem;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px}
 .lerr{color:var(--bad);font-size:.9rem}
 a.btn{text-decoration:none}
-body.out .bar,body.out #stats,body.out #board,body.out #issuesPanel,body.out .note:not(#login .note),body.out #reload,body.out #logout,body.out #copyBtn{display:none!important}
+body.out .bar,body.out #stats,body.out #board,body.out #issuesPanel,body.out .note:not(#login .note),body.out #reload,body.out #logout,body.out #copyBtn,body.out #upBtn{display:none!important}
 .days{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .days button{font:inherit;flex:none;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:6px 12px;cursor:pointer;display:flex;flex-direction:column;align-items:center;line-height:1.2;min-width:58px}
 .days button small{color:var(--muted);font-size:.75rem;font-family:var(--f-mono)}
@@ -130,26 +130,52 @@ body.out .intake,body.out #pubBar,body.out #archive,body.out #arcBar{display:non
 .arc-weeks{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .arc-weeks button{font:inherit;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:5px 10px;cursor:pointer}
 .arc-weeks button small{color:var(--muted)}
+
+/* ---- polish layer ---- */
+#upBtn[aria-expanded="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+body{min-height:100vh}
+.panel,.slot,.card{box-shadow:0 1px 2px rgba(16,40,34,.06),0 4px 14px rgba(16,40,34,.05)}
+.panel{border-radius:14px}
+.btn{border-radius:10px}
+header.top h1{letter-spacing:-.01em}
+.brand{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:12px;background:var(--accent);color:#fff;flex:none}
+.brand svg{width:26px;height:26px}
+.top .ttl{display:flex;align-items:center;gap:12px}
+/* login screen */
+body.out{background:radial-gradient(1200px 600px at 50% -10%,#1d8b77 0%,#0d6b5c 45%,#0a4f44 100%) fixed}
+body.out header.top{color:#fff;padding-top:6vh}
+body.out header.top .sub{color:rgba(255,255,255,.8)}
+body.out .top .ttl{flex-direction:column;gap:14px}
+body.out .brand{width:64px;height:64px;border-radius:18px;background:rgba(255,255,255,.14);box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+body.out .brand svg{width:36px;height:36px}
+body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 50px rgba(0,0,0,.25);margin-top:28px;gap:14px}
+#login h2{margin:0;font-size:1.35rem}
+#login .lf input{border-radius:12px;padding:13px 14px;font-size:16px;transition:border-color .15s,box-shadow .15s}
+#login .lf input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+#lbtn{border-radius:12px;padding:13px;font-size:1.05rem;font-weight:700;margin-top:4px}
+#login .lnote{margin:0;text-align:center;color:var(--muted);font-size:.85rem}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 </style>
 
 <div class="wrap">
   <header class="top">
     <div>
-      <h1>לוז התקנות שבועי</h1>
+      <div class="ttl"><span class="brand" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="16" rx="2.5"/><circle cx="12" cy="11" r="3.2"/><path d="M12 7.8v1M12 13.2v1M8.8 11h1M14.2 11h1M6 19v2M18 19v2"/></svg></span>
+      <h1>לוז התקנות שבועי</h1></div>
       <p class="sub" id="vupd">לוז התקנות והחלפות לשבוע</p>
     </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="reload" type="button">רענן</button><button class="btn" id="logout" type="button">יציאה</button><button class="btn" id="copyBtn" type="button">העתק לוז כטקסט</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="reload" type="button">רענן</button><button class="btn" id="logout" type="button">יציאה</button><button class="btn" id="copyBtn" type="button">העתק לוז כטקסט</button><button class="btn" id="upBtn" type="button" hidden aria-expanded="false">העלאה ידנית</button></div>
   </header>
 
   <div class="banner" id="vmsg" hidden></div>
   <form class="panel" id="login" hidden autocomplete="on">
     <h2>כניסה</h2>
     <p class="note" style="margin:0">נכנסים פעם אחת, והטלפון זוכר אותך.</p>
-    <label class="lf">שם משתמש<input id="lu" autocomplete="username" required></label>
+    <label class="lf">שם משתמש<input id="lu" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
     <label class="lf">סיסמה<input id="lp" type="password" autocomplete="current-password" required></label>
     <button class="btn primary" type="submit" id="lbtn">כניסה</button>
     <span class="lerr" id="lerr" hidden></span>
+    <p class="lnote">שם המשתמש לא רגיש לאותיות גדולות או קטנות</p>
   </form>
   <section class="intake" aria-label="קבצים" hidden>
     <label class="slot" id="planSlot" for="planInput">
@@ -520,7 +546,7 @@ async function load(){
     const u = new Date(res.updated_at);
     $("vupd").textContent = "עודכן " + u.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "numeric" }) + " בשעה " + u.toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" });
     msg.hidden = true;
-    archiveWeek = null; $("arcBar").hidden = true; document.querySelector(".intake").hidden = false;
+    archiveWeek = null; $("arcBar").hidden = true; $("upBtn").hidden = false;
     dirty = false; $("pubBar").hidden = true;
     state.week = null; boot(); state.sample = false;
     loadWeeks();
@@ -677,13 +703,14 @@ async function openWeek(w){
     const res = await rpc("lz_week_get", { p_token: getToken(), p_week: w });
     if (!res) { toast("השבוע לא נמצא"); return; }
     SAMPLE_PLAN = res.data.plan || []; SAMPLE_EMAIL = res.data.email || []; SOURCE = res.data.source || {};
-    archiveWeek = w; dirty = false; $("pubBar").hidden = true; document.querySelector(".intake").hidden = true;
+    archiveWeek = w; dirty = false; $("pubBar").hidden = true; document.querySelector(".intake").hidden = true; $("upBtn").hidden = true; $("upBtn").setAttribute("aria-expanded","false");
     $("arcMsg").textContent = `מציג מהארכיון: שבוע ${dm(w)}–${dm(addDays(w,6))}`; $("arcBar").hidden = false;
     pickedDay = "week"; state.week = w; boot(); state.sample = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
   }catch(e){ toast("טעינת השבוע נכשלה"); }
 }
 $("arcBack").onclick = () => { pickedDay = null; load(); };
+$("upBtn").onclick = () => { const i = document.querySelector(".intake"); i.hidden = !i.hidden; $("upBtn").setAttribute("aria-expanded", String(!i.hidden)); if (!i.hidden) i.scrollIntoView({ behavior: "smooth", block: "nearest" }); };
 $("arcForm").addEventListener("submit", async ev => {
   ev.preventDefault();
   const q = $("arcQ").value.trim(), box = $("arcRes");
