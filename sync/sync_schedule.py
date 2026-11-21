@@ -503,17 +503,17 @@ def gaps_email_html(gaps):
         if g["day"]:
             what.append(f"יום: אצלכם {day_label(e['date'])}, בתכנית {day_label(p['date'])}")
         if g.get("missing"):
-            what.append("לא מופיע בטבלת הסריאלים. נא לאשר את המשימה ולשלוח סריאל")
+            what.append("חוסר התאמה: המשימה בתכנית, אבל לא מופיעה בטבלת הסריאלים של אלי")
         rows += (f"<tr><td {td}>{html.escape(p['site'])}</td><td {td}>{html.escape(p['task'])}</td>"
                  f"<td {td}>{day_label(p['date'])}</td><td {td}>{html.escape(p['device'])}</td>"
                  f"<td {td}>{html.escape(clean(e.get('serial')))}</td><td {td}>{'<br>'.join(what)}</td></tr>")
     return (f'<div dir="rtl" style="font-family:Arial,sans-serif;font-size:11pt">'
-            f"<p>אריאל, לאוניד שלום,</p><p>מצאתי פערים בין טבלת הסריאלים ששלחת לבין תכנית ההתקנות שלנו. "
+            f"<p>אריאל, לאוניד שלום,</p><p>מצאתי חוסר התאמה בין טבלת הסריאלים של אלי לבין תכנית ההתקנות. "
             f"הנתונים הנכונים הם לפי התכנית:</p>"
             f'<table style="border-collapse:collapse" dir="rtl"><tr>'
             f"<th {td}>אתר</th><th {td}>משימה</th><th {td}>יום לפי התכנית</th><th {td}>מספר כספת לפי התכנית</th>"
             f"<th {td}>סריאל</th><th {td}>הפער</th></tr>{rows}</table>"
-            f"<p>אשמח שתעדכן ותאשר.</p><p>תודה,</p></div>")
+            f"<p>אשמח שתבדקו ותעדכנו.</p><p>תודה,</p></div>")
 
 
 def open_gaps_draft(gaps):
