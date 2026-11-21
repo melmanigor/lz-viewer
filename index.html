@@ -576,7 +576,7 @@ $("logout").onclick = () => { store.set("viewerToken", ""); history.replaceState
 const GAPS_TO = "Ariel.Zakuta@brinksinc.com;Leonid.Rubinshtein@brinksinc.com";
 function updateMail(){
   const a = $("mailGaps"); if (!a) return;
-  const gaps = lastVisible.filter(i => i.status === "warn");
+  const gaps = lastVisible.filter(i => i.status === "warn" || i.status === "missing");
   a.hidden = !gaps.length; if (!gaps.length) return;
   const lines = gaps.map(i => `- ${i.p.site} (${i.p.task}), לפי התכנית: יום ${DAYS[toUTC(i.p.date).getUTCDay()]} ${dm(i.p.date)}, כספת ${i.p.device}. הפער: ${i.diffs.join("; ")}`);
   const body = `אריאל, לאוניד שלום,\n\nמצאתי פערים בין טבלת הסריאלים ששלחתם לבין תכנית ההתקנות שלנו. הנתונים הנכונים הם לפי התכנית:\n\n${lines.join("\n")}\n\nאשמח שתעדכנו ותאשרו.\nתודה`;

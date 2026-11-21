@@ -478,6 +478,12 @@ def find_gaps(plan_rows, email_rows):
         day_diff = p["date"] != e["date"]
         if dev_diff or day_diff:
             gaps.append({"plan": p, "email": e, "dev": dev_diff, "day": day_diff})
+    # באקסל ולא במייל הסריאלים (באותו שבוע): ברינקס צריכים לאשר
+    matched = {pi for pi, _ in pairs if pi >= 0}
+    weeks = {week_of(e["date"]) for e in email_rows if e.get("date")}
+    for i, p in enumerate(plan):
+        if i not in matched and p["task"] in GAPS_TASKS and week_of(p["date"]) in weeks:
+            gaps.append({"plan": p, "email": {}, "dev": False, "day": False, "missing": True})
     return gaps
 
 
@@ -496,6 +502,8 @@ def gaps_email_html(gaps):
             what.append(f"מספר כספת: אצלכם {html.escape(clean(e.get('device')))}, בתכנית {html.escape(p['device'])}")
         if g["day"]:
             what.append(f"יום: אצלכם {day_label(e['date'])}, בתכנית {day_label(p['date'])}")
+        if g.get("missing"):
+            what.append("לא מופיע בטבלת הסריאלים. נא לאשר את המשימה ולשלוח סריאל")
         rows += (f"<tr><td {td}>{html.escape(p['site'])}</td><td {td}>{html.escape(p['task'])}</td>"
                  f"<td {td}>{day_label(p['date'])}</td><td {td}>{html.escape(p['device'])}</td>"
                  f"<td {td}>{html.escape(clean(e.get('serial')))}</td><td {td}>{'<br>'.join(what)}</td></tr>")
@@ -628,7 +636,7 @@ def review_replies(replies, gaps):
     state_path = OUTPUT_DIR / ".replies_seen.json"
     approved = load_overrides()
     gaps_ctx = [{"site": g["plan"]["site"], "device_in_plan": g["plan"]["device"], "date_in_plan": g["plan"]["date"],
-                 "device_in_brinks": clean(g["email"].get("device")), "date_in_brinks": g["email"]["date"]} for g in gaps]
+                 "device_in_brinks": clean(g["email"].get("device")), "date_in_brinks": g["email"].get("date", "")} for g in gaps]
     changed = False
     for r in replies:
         log(f"\n✉ תשובה מ-{r['from']} ({r['received']}):\n{r['text'][:1200]}\n")
@@ -899,15 +907,14 @@ def main():
             log(f"! {len(missing)} משימות מהאקסל לא מופיעות במייל הסריאלים (נוספו ללוז באותו יום):")
             for p in missing:
                 log(f"   - {p['date'][8:]}/{p['date'][5:7]} {p['site']} | {p['task']} | כספת {p['device'] or '—'}")
-            names = ", ".join(p["site"] for p in missing[:3]) + ("…" if len(missing) > 3 else "")
-            notify(f"לוז התקנות: {len(missing)} משימות חסרות במייל הסריאלים", names)
         gaps = find_gaps(plan_rows, email_rows)
         if not gaps:
             log("✓ אין פערים במספרי כספות או בימים. לא הוכן מייל.")
         else:
             log(f"! נמצאו {len(gaps)} פערים:")
             for g in gaps:
-                log(f"   - {g['plan']['site']}" + (" | מספר כספת שונה" if g["dev"] else "") + (" | יום שונה" if g["day"] else ""))
+                log(f"   - {g['plan']['site']}" + (" | מספר כספת שונה" if g["dev"] else "") + (" | יום שונה" if g["day"] else "")
+                    + (" | חסר במייל הסריאלים" if g.get("missing") else ""))
             names = ", ".join(g["plan"]["site"] for g in gaps[:3]) + ("…" if len(gaps) > 3 else "")
             notify(f"לוז התקנות: {len(gaps)} פערים מול ברינקס", names)
             if args.auto:
