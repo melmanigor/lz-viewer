@@ -485,6 +485,7 @@ for (const o of (SOURCE.overrides || [])){
 }
 state.imgName = SOURCE.emailName || "";
 $("imgStatus").textContent = state.imgName ? `${state.imgName}: ${state.email.length} שורות` : "לא נמצא מייל סריאלים";
+if (SOURCE.note && !state.email.length){ $("imgStatus").className = "st err"; $("imgStatus").textContent = SOURCE.note; } else $("imgStatus").className = "st";
 render();
 }
 
