@@ -125,14 +125,23 @@ def pick_brinks(cands, workdir):
     if not cands:
         log("✗ לא נמצא מייל שבנושא שלו " + " / ".join(BRINKS_SUBJECT_KEYWORDS) + f" ב-{DAYS_BACK} הימים האחרונים")
         return None
-    cands.sort(key=lambda c: (c[0], c[1]), reverse=True)
-    if not cands[0][0]:
-        log(f"  (אף מייל סריאלים לא זוהה לפי השולח {BRINKS_SENDER_KEYWORDS}. משתמש לפי הנושא בלבד)")
+    # תמיד המייל העדכני ביותר בשרשור "סריאלים לכספות" (כל תשובה של אלי מעדכנת את הטבלה).
+    # השולח רק מכריע בין מיילים מאותה דקה.
+    cands.sort(key=lambda c: (c[1], c[0]), reverse=True)
+    log(f"  נמצאו {len(cands)} מיילי סריאלים:")
+    for by_sender, received, item in cands[:6]:
+        try:
+            who = item.SenderName or ""
+        except Exception:
+            who = ""
+        log(f"    {received:%d/%m %H:%M}  {who}  {'(ברינקס)' if by_sender else ''}")
     with_image = None
     for idx, (by_sender, received, item) in enumerate(cands[:6]):
         b = brinks_from_item(item, received, workdir, idx)
         if rows_from_html(b["html"]):
             log(f"✓ מייל ברינקס: {b['subject']} (מ-{received:%d/%m %H:%M}), עם טבלה")
+            # מיילים ישנים יותר בשרשור: רק כדי להשלים סריאל שחסר בחדש (לא מוסיפים מהם שורות)
+            b["older_html"] = [c[2].HTMLBody or "" for c in cands[idx + 1:idx + 6]]
             return b
         if b["images"] and not with_image:
             with_image = b
@@ -162,15 +171,21 @@ def fetch_from_outlook(workdir: Path):
         for folder in iter_folders(root):
             try:
                 items = folder.Items
-                items.Sort("[ReceivedTime]", True)
-                items = items.Restrict("[ReceivedTime] >= '" + since.strftime("%m/%d/%Y %H:%M %p") + "'")
+                items.Sort("[ReceivedTime]", True)  # מהחדש לישן
             except Exception:
                 continue
+            # בלי Restrict: פורמט התאריך שלו תלוי בהגדרות האזור של Windows (יום/חודש מול חודש/יום),
+            # ובמחשב בעברית זה פספס מיילים חדשים. עוברים מהחדש לישן ועוצרים כשמגיעים לישן מדי.
             for item in items:
-                if getattr(item, "Class", None) != 43:  # 43 = MailItem
+                try:
+                    if getattr(item, "Class", None) != 43:  # 43 = MailItem
+                        continue
+                    rt = item.ReceivedTime
+                except Exception:
                     continue
-                rt = item.ReceivedTime
                 received = dt.datetime(rt.year, rt.month, rt.day, rt.hour, rt.minute)
+                if received < since:
+                    break
                 subject = item.Subject or ""
                 sender = sender_text(item)
                 atts = [item.Attachments.Item(i + 1) for i in range(item.Attachments.Count)]
@@ -307,7 +322,7 @@ def parse_date(s):
 
 def rows_from_html(body: str):
     p = TableParser(); p.feed(body)
-    out = []
+    out, seen = [], {}
     for grid in p.tables:
         header = None
         for row in grid:
@@ -320,11 +335,38 @@ def rows_from_html(body: str):
             d = parse_date(get("date"))
             if not d or not get("site"):
                 continue
-            out.append({"date": d, "day": get("day"), "site": get("site"), "supplier": get("supplier"),
-                        "device": get("device"), "model": get("model"),
-                        "ins": get("ins").strip().upper() == "V", "plate": get("plate").strip().upper() == "V",
-                        "task": get("task"), "serial": get("serial")})
+            key = (d, re.sub(r"\D", "", get("device")) or get("site").strip())
+            if key in seen:  # שורה מהמייל המצוטט (הישן) שמתחת לתשובה. הגרסה העליונה, החדשה, קובעת,
+                prev = seen[key]  # אבל אם חסר בה סריאל ובישנה יש, משלימים ממנה
+                if not prev["serial"].strip() and get("serial").strip():
+                    prev["serial"] = get("serial")
+                continue
+            row_out = {"date": d, "day": get("day"), "site": get("site"), "supplier": get("supplier"),
+                       "device": get("device"), "model": get("model"),
+                       "ins": get("ins").strip().upper() == "V", "plate": get("plate").strip().upper() == "V",
+                       "task": get("task"), "serial": get("serial")}
+            seen[key] = row_out
+            out.append(row_out)
     return out
+
+
+def fill_serials(rows, older_htmls):
+    """סריאל שחסר במייל החדש אבל הופיע במייל קודם של אלי (אותו תאריך ואותה כספת) נכנס לכרטיס."""
+    key = lambda r: (r["date"], re.sub(r"\D", "", r.get("device") or "") or (r.get("site") or "").strip())
+    old = {}
+    for h in older_htmls:
+        try:
+            for r in rows_from_html(h):
+                if (r.get("serial") or "").strip():
+                    old.setdefault(key(r), r["serial"])
+        except Exception:
+            pass
+    n = 0
+    for r in rows:
+        if not (r.get("serial") or "").strip() and key(r) in old:
+            r["serial"] = old[key(r)]; n += 1
+    if n:
+        log(f"  הושלמו {n} סריאלים ממיילים קודמים של אלי")
 
 
 def keep_tasks(email_rows):
@@ -897,6 +939,7 @@ def main():
         email_rows = rows_from_html(brinks["html"])
         if email_rows:
             log(f"✓ נקראו {len(email_rows)} שורות מהטבלה במייל")
+            fill_serials(email_rows, brinks.get("older_html") or [])
         elif brinks["images"]:
             email_rows = rows_from_images(brinks["images"])
             if email_rows:
