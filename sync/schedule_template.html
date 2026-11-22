@@ -327,7 +327,9 @@ function buildItems(){
     }
     if (pi >= 0){ used.add(pi); const p = plan[pi]; const diffs = compare(p, e);
       const onlyNoDev = diffs.length && diffs.every(x => x.startsWith("מספר כספת חסר"));   // חסר במייל, הושלם מהאקסל
-      items.push({ date: p.date, team: p.team, order: p.order, p, e, diffs, status: onlyNoDev ? "missing" : diffs.length ? "warn" : "ok" }); }
+      const noSerial = !String(e.serial || "").trim();   // הכספת בטבלה של אלי, אבל עוד בלי סריאל
+      const st = onlyNoDev ? "missing" : diffs.length ? "warn" : noSerial ? "pending" : "ok";
+      items.push({ date: p.date, team: p.team, order: p.order, p, e, diffs: st === "pending" ? ["מופיע בטבלה של אלי, אבל עוד בלי סריאל"] : diffs, status: st }); }
     else items.push({ date: e.date, team: 99, order: 1e6 + e.order, p: null, e, diffs: ["לא מופיע בתכנית ההתקנות"], status: "extra" });
   }
   const emailWeeks = new Set(state.email.map(e => weekOf(e.date)));   // באקסל ולא במייל של אותו שבוע: נשאר באותו יום ומסומן
