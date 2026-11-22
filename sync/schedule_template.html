@@ -106,7 +106,9 @@ button.stat:hover{filter:brightness(.96)}
 .note-box.coins{background:#ffedd5;color:#7c2d12;border-color:#fb923c;align-items:center}
 .note-box.coins .cm{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .note-box.coins b{font-family:var(--f-mono);font-size:1.2rem;letter-spacing:.03em}
-.coinchip{background:#ea580c;color:#fff;border-radius:999px;padding:2px 12px;font-weight:800;font-size:1rem}
+.coinchip{background:#ea580c;color:#fff;border-radius:999px;padding:2px 10px;font-weight:800;font-size:.9rem;white-space:nowrap}
+.sitewrap{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+.mchip{font-family:var(--f-mono);font-weight:800;font-size:.95rem;background:var(--ink);color:var(--surface);border-radius:6px;padding:1px 8px;letter-spacing:.03em;white-space:nowrap}
 .note-box b{font-size:1.15rem}
 @media (prefers-color-scheme: dark){.note-box{background:#3a1d1b;color:#f8c5c0;border-color:#7a2e28}.note-box.cash{background:#3a2c08;color:#ffe3a0;border-color:#8a6a14}.note-box.tech{background:#0c2a3d;color:#bae6fd;border-color:#1e5a7a}.note-box.ins{background:#0f2e1c;color:#bbf7d0;border-color:#166534}.note-box.coins{background:#3b1d0a;color:#fed7aa;border-color:#9a3412}}
 .ids{display:flex;flex-direction:column;gap:6px}
@@ -369,13 +371,12 @@ function card(it){
       ${p.address ? `<div>כתובת: ${esc(p.address)}</div>` : ""}${p.contact ? `<div>איש קשר: ${esc(p.contact)}</div>` : ""}${p.notes ? `<div>הערות: ${esc(p.notes)}</div>` : ""}</details>` : "";
   return `<article class="card ${cls}">
     <div class="tasktag ${src.task === "החלפה" ? "t-swap" : "t-new"}">${src.task === "החלפה" ? "⇄" : "＋"} ${esc(src.task)}</div>
-    <div class="row1"><span class="site">${esc(src.site)}</span><span class="pill">${label}</span></div>
-    <div class="meta"><span>${esc(src.supplier)}</span>${coins ? "" : `<span>${esc(src.model)}</span>`}${p && p.region ? `<span>${esc(p.region)}</span>` : ""}</div>
+    <div class="row1"><span class="sitewrap"><span class="site">${esc(src.site)}</span>${baseModel ? `<span class="mchip">${esc(baseModel)}</span>` : ""}${coins ? `<span class="coinchip">🪙 מטבעות</span>` : ""}</span><span class="pill">${label}</span></div>
+    <div class="meta"><span>${esc(src.supplier)}</span>${p && p.region ? `<span>${esc(p.region)}</span>` : ""}</div>
     <div class="ids">
       <div class="idrow safe"><span class="k">מספר כספת</span><span class="v">${esc((p && p.device) || (e && e.device) || "—")}</span></div>
       <div class="serial idrow">${serialHtml}</div>
     </div>
-    ${coins ? `<div class="note-box coins"><span class="ic" aria-hidden="true">🪙</span><span class="cm">${baseModel ? `<b>${esc(baseModel)}</b>` : ""}<span class="coinchip">מטבעות</span></span></div>` : ""}
     ${(p && p.ins) || (e && e.ins) ? `<div class="note-box ins"><span class="ic" aria-hidden="true">🛡️</span><span><b>ביטוח ברינקס</b></span></div>` : ""}${noteHtml(p, src.task)}
     ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${t}</span>`).join("")}</div>` : ""}
     ${it.diffs.length && (it.status !== "missing" || it.e) && it.status !== "extra" ? `<ul class="diffs">${it.diffs.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}
