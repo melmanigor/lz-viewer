@@ -17,6 +17,8 @@ import html
 import json
 import os
 import re
+import warnings
+warnings.filterwarnings("ignore", message="Data Validation extension")
 import sys
 import tempfile
 import webbrowser
@@ -45,9 +47,19 @@ TEMPLATE = HERE / "schedule_template.html"
 EXCEL_EPOCH = dt.datetime(1899, 12, 30)
 
 
+_HEB_RUN = re.compile(r"[\u0590-\u05FF][\u0590-\u05FF\s'\"\-]*[\u0590-\u05FF]|[\u0590-\u05FF]")
+
+
+def con(msg):
+    """חלון ה-cmd לא מציג עברית מימין לשמאל, אז הופכים כל רצף עברי כדי שייקרא נכון (רק בחלון, לא בקובץ הלוג)."""
+    def flip(m):
+        return m.group(0)[::-1]
+    return _HEB_RUN.sub(flip, str(msg))
+
+
 def log(msg):
     try:
-        print(msg, flush=True)
+        print(con(msg), flush=True)
     except Exception:
         pass  # pythonw (הרצה ברקע) אין חלון
     try:
@@ -61,7 +73,7 @@ def log(msg):
 def notify(title, body):
     """התראה בפינת המסך של Windows. אם לא אפשרי, חלון הודעה רגיל."""
     if os.name != "nt":
-        log(f"[התראה] {title}: {body}")
+        log(f"[alert] {title}: {body}")
         return
     import subprocess
     esc = lambda s: str(s).replace("'", "''").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
@@ -78,7 +90,7 @@ def notify(title, body):
             import ctypes
             ctypes.windll.user32.MessageBoxW(0, body, title, 0x40 | 0x40000)
         except Exception:
-            log(f"[התראה] {title}: {body}")
+            log(f"[alert] {title}: {body}")
 
 
 # ================================================================ Outlook
@@ -123,33 +135,33 @@ def pick_brinks(cands, workdir):
     """מבין המיילים עם "סריאלים לכספות": קודם מה שנשלח מברינקס, ובתוך זה מהחדש לישן.
     בוחרים את הראשון שיש בו טבלה שאפשר לקרוא. אם אין טבלה באף אחד, את החדש שיש בו תמונה."""
     if not cands:
-        log("✗ לא נמצא מייל שבנושא שלו " + " / ".join(BRINKS_SUBJECT_KEYWORDS) + f" ב-{DAYS_BACK} הימים האחרונים")
+        log(f"✗ No serials email (subject with " + " / ".join(BRINKS_SUBJECT_KEYWORDS) + f") in the last {DAYS_BACK} days")
         return None
     # תמיד המייל העדכני ביותר בשרשור "סריאלים לכספות" (כל תשובה של אלי מעדכנת את הטבלה).
     # השולח רק מכריע בין מיילים מאותה דקה.
     cands.sort(key=lambda c: (c[1], c[0]), reverse=True)
-    log(f"  נמצאו {len(cands)} מיילי סריאלים:")
+    log(f"  Found {len(cands)} serials emails:")
     for by_sender, received, item in cands[:6]:
         try:
             who = item.SenderName or ""
         except Exception:
             who = ""
-        log(f"    {received:%d/%m %H:%M}  {who}  {'(ברינקס)' if by_sender else ''}")
+        log(f"    {received:%d/%m %H:%M}  {who}  {'(Brinks)' if by_sender else ''}")
     with_image = None
     for idx, (by_sender, received, item) in enumerate(cands[:6]):
         b = brinks_from_item(item, received, workdir, idx)
         if rows_from_html(b["html"]):
-            log(f"✓ מייל ברינקס: {b['subject']} (מ-{received:%d/%m %H:%M}), עם טבלה")
+            log(f"✓ Serials email: {b['subject']} (from {received:%d/%m %H:%M}), with table")
             # מיילים ישנים יותר בשרשור: רק כדי להשלים סריאל שחסר בחדש (לא מוסיפים מהם שורות)
             b["older_html"] = [c[2].HTMLBody or "" for c in cands[idx + 1:idx + 6]]
             return b
         if b["images"] and not with_image:
             with_image = b
-        log(f"  - {b['subject']} ({received:%d/%m %H:%M}): אין בו טבלה" + (f", יש {len(b['images'])} תמונות" if b["images"] else ""))
+        log(f"  - {b['subject']} ({received:%d/%m %H:%M}): no table" + (f", {len(b['images'])} images" if b["images"] else ""))
     if with_image:
-        log(f"✓ מייל ברינקס: {with_image['subject']} (מ-{with_image['received']:%d/%m %H:%M}), הטבלה בתמונה")
+        log(f"✓ Serials email: {with_image['subject']} (from {with_image['received']:%d/%m %H:%M}), table is an image")
         return with_image
-    log("✗ נמצאו מיילי סריאלים, אבל באף אחד מהם אין טבלה או תמונה")
+    log("✗ Found serials emails, but none has a table or an image")
     return None
 
 
@@ -158,7 +170,7 @@ def fetch_from_outlook(workdir: Path):
     try:
         import win32com.client  # pywin32
     except ImportError:
-        sys.exit("חסרה הספרייה pywin32. התקן עם: pip install pywin32")
+        sys.exit("Missing pywin32. Install with: pip install pywin32")
 
     ns = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")
     since = dt.datetime.now() - dt.timedelta(days=DAYS_BACK)
@@ -206,10 +218,10 @@ def fetch_from_outlook(workdir: Path):
             if a.FileName.lower().endswith((".xlsx", ".xlsm", ".xls")) and any(k in a.FileName for k in PLAN_ATTACHMENT_KEYWORDS):
                 plan_path = workdir / a.FileName
                 a.SaveAsFile(str(plan_path))
-                log(f"✓ תכנית התקנות: {a.FileName} (מייל מ-{plan_hit[0]:%d/%m %H:%M})")
+                log(f"✓ Installation plan: {a.FileName} (email from {plan_hit[0]:%d/%m %H:%M})")
                 break
     else:
-        log("✗ לא נמצא מייל עם קובץ תכנית התקנות בימים האחרונים")
+        log("✗ No email with the installation plan Excel in the last days")
 
     brinks = pick_brinks(brinks_cands, workdir)
     return plan_path, brinks
@@ -228,7 +240,7 @@ def load_plan_rows(path: Path, keep_days_back=21):
         if ws:
             break
     if ws is None:
-        sys.exit("לא נמצא גיליון עם עמודת 'שם אתר' בקובץ התכנית")
+        sys.exit("No sheet with a 'שם אתר' column in the plan file")
 
     def cv(v):
         if isinstance(v, dt.datetime):
@@ -366,7 +378,7 @@ def fill_serials(rows, older_htmls):
         if not (r.get("serial") or "").strip() and key(r) in old:
             r["serial"] = old[key(r)]; n += 1
     if n:
-        log(f"  הושלמו {n} סריאלים ממיילים קודמים של אלי")
+        log(f"  Filled {n} serials from Eli's earlier emails")
 
 
 def keep_tasks(email_rows):
@@ -385,8 +397,8 @@ IMG_PROMPT = """התמונה היא צילום מסך של מייל מחברת �
 def rows_from_images(images):
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
-        log("! המייל של ברינקס מכיל רק תמונה. כדי לקרוא אותה הגדר ANTHROPIC_API_KEY,"
-            " או גרור את התמונה לאפליקציה ב-claude.ai.")
+        log("! The serials email has only an image. To read it set ANTHROPIC_API_KEY,"
+            " or use manual upload on the site.")
         return []
     import urllib.request
     content = []
@@ -571,7 +583,7 @@ def open_gaps_draft(gaps):
     mail.Subject = f"פערים בסריאלים לכספות ({len(gaps)})"
     mail.Display()                       # מציג את החלון קודם, כדי שהחתימה שלך תיכנס
     mail.HTMLBody = gaps_email_html(gaps) + mail.HTMLBody
-    log(f"✉ נפתחה טיוטה ל-{GAPS_EMAIL_TO}. בדוק אותה ולחץ 'שלח' ב-Outlook רק אם אתה מאשר.")
+    log(f"✉ Draft opened to {GAPS_EMAIL_TO}. Check it and press Send in Outlook only if you approve.")
 
 
 # ================================================================ Brinks replies
@@ -686,29 +698,29 @@ def review_replies(replies, gaps):
                  "device_in_brinks": clean(g["email"].get("device")), "date_in_brinks": g["email"].get("date", "")} for g in gaps]
     changed = False
     for r in replies:
-        log(f"\n✉ תשובה מ-{r['from']} ({r['received']}):\n{r['text'][:1200]}\n")
+        log(f"\n✉ Reply from {r['from']} ({r['received']}):\n{r['text'][:1200]}\n")
         res = claude_json([{"type": "text", "text": REPLY_PROMPT.format(gaps=json.dumps(gaps_ctx, ensure_ascii=False), reply=r["text"][:6000])}])
         if res is None:
-            log("  (אין ANTHROPIC_API_KEY, אז אני לא מפענח את התשובה. אם צריך לשנות, עדכן את האקסל.)")
+            log("  (No ANTHROPIC_API_KEY, so the reply is not analyzed. If something must change, update the Excel.)")
             continue
         changes = [c for c in res.get("changes", []) if c.get("field") in ("date", "device", "serial", "confirm_plan")]
         if not changes:
-            log("  אין בתשובה שינוי מפורש. " + clean(res.get("summary")))
+            log("  No explicit change in the reply. " + clean(res.get("summary")))
         for c in changes:
             if c["field"] == "confirm_plan":
-                log(f"  ✓ {c.get('site')}: ברינקס מאשרים שהתכנית נכונה.")
+                log(f"  ✓ {c.get('site')}: Brinks confirm the plan is correct.")
                 continue
-            what = {"date": "יום", "device": "מספר כספת", "serial": "סריאל"}[c["field"]]
+            what = {"date": "day", "device": "safe number", "serial": "serial"}[c["field"]]
             val = day_label(parse_date(c["value"])) if c["field"] == "date" and parse_date(c.get("value")) else c.get("value")
-            ans = input(f"  ? {c.get('site')} (כספת {c.get('device_in_plan')}): לשנות {what} ל-{val}? "
-                        f"[\"{clean(c.get('quote'))[:80]}\"] (כ/ל): ").strip()
+            ans = input(con(f"  ? {c.get('site')} (safe {c.get('device_in_plan')}): change {what} to {val}? "
+                        f"[\"{clean(c.get('quote'))[:80]}\"] (y/n): ")).strip()
             if ans in ("כ", "כן", "y", "yes", "Y"):
                 c.update({"approved_at": f"{dt.datetime.now():%d/%m/%Y %H:%M}", "reply_from": r["from"]})
                 approved.append(c)
                 changed = True
-                log("    ✓ נשמר. הלוז יתעדכן לפי זה.")
+                log("    ✓ Saved. The schedule will follow it.")
             else:
-                log("    ✗ לא שונה. האקסל נשאר הקובע.")
+                log("    ✗ Not changed. The Excel stays the source of truth.")
     try:
         seen = json.loads(state_path.read_text(encoding="utf-8"))
     except Exception:
@@ -762,9 +774,9 @@ def self_update():
             os.replace(tmp, old_path)
             changed.append(name)
         except Exception as ex:
-            log(f"  (בדיקת עדכון ל-{name} נכשלה, ממשיך עם הגרסה הקיימת: {ex})")
+            log(f"  (Update check for {name} failed, keeping the current version: {ex})")
     if changed:
-        log("⬆ עודכן אוטומטית: " + ", ".join(changed))
+        log("⬆ Auto-updated: " + ", ".join(changed))
     if "sync_schedule.py" in changed:
         import subprocess   # ב-Windows עדיף להריץ ולחכות מאשר execv
         sys.exit(subprocess.call([sys.executable, str(HERE / "sync_schedule.py"), "--no-update"] + sys.argv[1:]))
@@ -778,7 +790,7 @@ def publish_to_viewer(plan_rows, email_rows, source):
     try:
         cfg = json.loads(VIEWER_CONFIG.read_text(encoding="utf-8"))
     except Exception:
-        log("  (אין viewer_config.json, אז הלוז לא הועלה לקישור של הטכנאי)")
+        log("  (No viewer_config.json, so the schedule was not published to the site)")
         return
     import urllib.request
     body = json.dumps({"p_token": cfg["admin_token"],
@@ -789,9 +801,9 @@ def publish_to_viewer(plan_rows, email_rows, source):
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             r.read()
-        log("✓ הלוז עודכן בקישור של הטכנאי")
+        log("✓ Schedule published to the site")
     except Exception as ex:
-        log(f"! העדכון לקישור של הטכנאי נכשל: {ex}")
+        log(f"! Publishing to the site failed: {ex}")
     archive_weeks(cfg, plan_rows, email_rows, source)
 
 
@@ -824,7 +836,7 @@ def sync_sent_flag(gaps, since):
                 last = dt.datetime(t.year, t.month, t.day, t.hour, t.minute)
                 break
     except Exception as ex:
-        log(f"  (בדיקת 'פריטים שנשלחו' נכשלה: {ex})")
+        log(f"  (Checking Sent Items failed: {ex})")
         return
     if not last or (since and last < since):
         return
@@ -844,9 +856,9 @@ def sync_sent_flag(gaps, since):
                 continue
             call("lz_flag_set", {"p_token": cfg["admin_token"], "p_key": f"gapsmail:{w}",
                                  "p_value": {"sig": sig, "at": last.isoformat(), "by": "outlook"}})
-            log(f"✓ מייל הפערים נשלח ב-{last:%d/%m %H:%M}. הכפתור באתר סומן 'נשלח'")
+            log(f"✓ Gaps email was sent on {last:%d/%m %H:%M}. The site button is marked as sent")
         except Exception as ex:
-            log(f"  (סימון 'נשלח' באתר נכשל: {ex})")
+            log(f"  (Marking as sent on the site failed: {ex})")
 
 
 def archive_weeks(cfg, plan_rows, email_rows, source):
@@ -885,9 +897,9 @@ def archive_weeks(cfg, plan_rows, email_rows, source):
                 r.read()
             done += 1
         except Exception as ex:
-            log(f"! שמירת שבוע {w} בארכיון נכשלה: {ex}")
+            log(f"! Archiving week {w} failed: {ex}")
     if done:
-        log(f"✓ נשמרו בארכיון {done} שבועות")
+        log(f"✓ Archived {done} weeks")
 
 
 # ================================================================ Output
@@ -927,9 +939,9 @@ def main():
                 o_plan, o_brinks = fetch_from_outlook(workdir)
                 plan_path = plan_path or o_plan
                 brinks = brinks or o_brinks
-                log("✓ החלק שלא הועלה ידנית נמשך מ-Outlook")
+                log("✓ The part not uploaded manually was taken from Outlook")
             except BaseException as ex:
-                log(f"  (לא נמשך מ-Outlook: {ex})")
+                log(f"  (Could not read Outlook: {ex})")
     else:
         plan_path, brinks = fetch_from_outlook(workdir)
 
@@ -938,12 +950,12 @@ def main():
     if brinks:
         email_rows = rows_from_html(brinks["html"])
         if email_rows:
-            log(f"✓ נקראו {len(email_rows)} שורות מהטבלה במייל")
+            log(f"✓ Read {len(email_rows)} rows from the email table")
             fill_serials(email_rows, brinks.get("older_html") or [])
         elif brinks["images"]:
             email_rows = rows_from_images(brinks["images"])
             if email_rows:
-                log(f"✓ נקראו {len(email_rows)} שורות מהתמונה")
+                log(f"✓ Read {len(email_rows)} rows from the image")
     email_rows = keep_tasks(email_rows)
     # למה אין סריאלים? נכתב גם בראש הלוז, כדי שלא תצטרך לחפש בלוג.
     email_note = ""
@@ -964,13 +976,13 @@ def main():
         try:
             replies = fetch_replies(seen_reply_ids())
             if replies:
-                log(f"✉ נמצאו {len(replies)} תשובות חדשות של ברינקס למייל הפערים")
+                log(f"✉ Found {len(replies)} new Brinks replies to the gaps email")
                 if args.auto:
                     notify("לוז התקנות: ברינקס ענו", f"{len(replies)} תשובות למייל הפערים מחכות לאישור שלך. הפעל את run.bat.")
                 else:
                     review_replies(replies, find_gaps(plan_rows, email_rows))
         except Exception as ex:
-            log(f"! בדיקת תשובות ברינקס נכשלה: {ex}")
+            log(f"! Checking Brinks replies failed: {ex}")
 
     # אותה תכנית, אותו מייל ואותם שינויים מאושרים כמו בריצה הקודמת? לא בונים מחדש ולא שואלים שוב.
     import hashlib
@@ -983,7 +995,7 @@ def main():
     except Exception:
         last = {}
     if not args.force and last.get("fp") == fp and Path(last.get("out", "")).exists():
-        log(f"= אין שינוי מאז הריצה הקודמת ({last.get('at')}). פותח את הלוז הקיים.")
+        log(f"= No change since the last run ({last.get('at')}). Opening the current schedule.")
         if not args.no_open:
             open_schedule(Path(last["out"]))
         return
@@ -998,7 +1010,7 @@ def main():
     }
     out = OUTPUT_DIR / f"לוז התקנות {now:%Y-%m-%d}.html"
     out.write_text(build_page(plan_rows, email_rows, source), encoding="utf-8")
-    log(f"✓ הלוז נשמר: {out}")
+    log(f"✓ Schedule saved: {out}")
     state_file.write_text(json.dumps({"fp": fp, "out": str(out), "at": f"{now:%d/%m %H:%M}"}, ensure_ascii=False), encoding="utf-8")
     if plan_path:   # גם בהעלאה ידנית, וגם בלי סריאלים (הטכנאי רואה לפחות את הלוז): מתעדכן אצל הטכנאי ונשמר בארכיון
         publish_to_viewer(plan_rows, email_rows, {k: v for k, v in source.items() if k != "banner"})
@@ -1012,9 +1024,9 @@ def main():
         for w in sorted({week_of(p["date"]) for p in eilat}):
             ps = [p for p in eilat if week_of(p["date"]) == w]
             sun = dt.date.fromisoformat(w)
-            log(f"🔔 כספת לאילת ({len(ps)}): להכין עד יום ראשון {sun.day}/{sun.month}")
+            log(f"🔔 Eilat safe ({len(ps)}): prepare by Sunday {sun.day}/{sun.month}")
             for p in ps:
-                log(f"   - {day_label(p['date'])} {p['site']} | {p['task']} | כספת {p['device'] or '—'}")
+                log(f"   - {p['date'][8:]}/{p['date'][5:7]} {p['site']} | {p['task']} | safe {p['device'] or '—'}")
             if args.auto:   # בהרצה רגילה ההודעה קופצת באתר אחרי הכניסה
                 notify(f"כספת לאילת: להכין עד יום ראשון {sun.day}/{sun.month}",
                        ", ".join(f"{p['site']} ({day_label(p['date'])})" for p in ps[:3]))
@@ -1026,33 +1038,33 @@ def main():
         weeks = {week_of(e["date"]) for e in email_rows if e.get("date")}
         missing = [p for i, p in enumerate(plan) if i not in matched and week_of(p["date"]) in weeks]
         if missing:
-            log(f"! {len(missing)} משימות מהאקסל לא מופיעות במייל הסריאלים (נוספו ללוז באותו יום):")
+            log(f"! {len(missing)} Excel tasks are missing in the serials email (added on their Excel day):")
             for p in missing:
-                log(f"   - {p['date'][8:]}/{p['date'][5:7]} {p['site']} | {p['task']} | כספת {p['device'] or '—'}")
+                log(f"   - {p['date'][8:]}/{p['date'][5:7]} {p['site']} | {p['task']} | safe {p['device'] or '—'}")
         gaps = find_gaps(plan_rows, email_rows)
         if gaps and not local:
             sync_sent_flag(gaps, brinks.get("received") if brinks else None)
         if not gaps:
-            log("✓ אין פערים במספרי כספות או בימים. לא הוכן מייל.")
+            log("✓ No gaps in safe numbers or days. No email prepared.")
         else:
-            log(f"! נמצאו {len(gaps)} פערים:")
+            log(f"! Found {len(gaps)} gaps:")
             for g in gaps:
-                log(f"   - {g['plan']['site']}" + (" | מספר כספת שונה" if g["dev"] else "") + (" | יום שונה" if g["day"] else "")
-                    + (" | חסר במייל הסריאלים" if g.get("missing") else "") + (" | מספר כספת חסר בטבלה" if g.get("nodev") else ""))
+                log(f"   - {g['plan']['site']}" + (" | different safe number" if g["dev"] else "") + (" | different day" if g["day"] else "")
+                    + (" | missing in serials email" if g.get("missing") else "") + (" | safe number missing in table" if g.get("nodev") else ""))
             names = ", ".join(g["plan"]["site"] for g in gaps[:3]) + ("…" if len(gaps) > 3 else "")
             notify(f"לוז התקנות: {len(gaps)} פערים מול ברינקס", names)
             if args.auto:
-                log("  (הרצה ברקע: לאישור מייל הפערים הפעל את run.bat)")
+                log("  (Background run: to approve the gaps email, run run.bat)")
             elif local:
                 prev = OUTPUT_DIR / f"מייל פערים {now:%Y-%m-%d}.html"
                 prev.write_text("<!doctype html><meta charset='utf-8'>" + gaps_email_html(gaps), encoding="utf-8")
-                log(f"  (מצב מקומי: המייל נשמר לתצוגה ב-{prev} ולא נפתח ב-Outlook)")
+                log(f"  (Local mode: email saved for preview at {prev}, not opened in Outlook)")
             else:
-                ans = input(f"להכין מייל פערים ל-{GAPS_EMAIL_TO}? הוא ייפתח ב-Outlook לאישור ולא יישלח לבד (כ/ל): ").strip()
+                ans = input(f"Prepare gaps email to {GAPS_EMAIL_TO}? It opens in Outlook for your approval and is never sent by itself (y/n): ").strip()
                 if ans in ("כ", "כן", "y", "yes", "Y"):
                     open_gaps_draft(gaps)
                 else:
-                    log("לא הוכן מייל.")
+                    log("No email prepared.")
 
 
 if __name__ == "__main__":
