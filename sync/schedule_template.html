@@ -102,8 +102,9 @@ button.stat:hover{filter:brightness(.96)}
 .note-box{display:flex;gap:8px;align-items:flex-start;background:#fdecec;color:#9b1c1c;border:1px solid #f5b5b5;border-radius:8px;padding:7px 10px;font-weight:700;font-size:1rem}
 .note-box.tech{background:#e0f2fe;color:#075985;border-color:#7dd3fc}
 .note-box.cash{background:#fff4d6;color:#7a4d00;border-color:#f0c24b}
+.note-box.ins{background:#dcfce7;color:#14532d;border-color:#4ade80}
 .note-box b{font-size:1.15rem}
-@media (prefers-color-scheme: dark){.note-box{background:#3a1d1b;color:#f8c5c0;border-color:#7a2e28}.note-box.cash{background:#3a2c08;color:#ffe3a0;border-color:#8a6a14}.note-box.tech{background:#0c2a3d;color:#bae6fd;border-color:#1e5a7a}}
+@media (prefers-color-scheme: dark){.note-box{background:#3a1d1b;color:#f8c5c0;border-color:#7a2e28}.note-box.cash{background:#3a2c08;color:#ffe3a0;border-color:#8a6a14}.note-box.tech{background:#0c2a3d;color:#bae6fd;border-color:#1e5a7a}.note-box.ins{background:#0f2e1c;color:#bbf7d0;border-color:#166534}}
 .ids{display:flex;flex-direction:column;gap:6px}
 .idrow{display:flex;align-items:center;gap:10px;border-radius:8px;padding:7px 10px}
 .idrow .k{color:var(--muted);font-size:.8rem;min-width:66px}
@@ -351,7 +352,6 @@ function card(it){
   const [label, cls] = STATUS[it.status];
   const tags = [];
   if ((p && p.plate) || (e && e.plate)) tags.push("פלטת יציקה");
-  if ((p && p.ins) || (e && e.ins)) tags.push("ביטוח ברינקס");
   if (p && e && !devNo(e.device) && devNo(p.device)) tags.push("מספר כספת הושלם מהאקסל");
   if (p && p.override) tags.push("עודכן לפי תשובת ברינקס (אישרת)");
   const serial = e ? e.serial : "";
@@ -369,7 +369,7 @@ function card(it){
       <div class="idrow safe"><span class="k">מספר כספת</span><span class="v">${esc((p && p.device) || (e && e.device) || "—")}</span></div>
       <div class="serial idrow">${serialHtml}</div>
     </div>
-    ${noteHtml(p, src.task)}
+    ${(p && p.ins) || (e && e.ins) ? `<div class="note-box ins"><span class="ic" aria-hidden="true">🛡️</span><span><b>ביטוח ברינקס</b></span></div>` : ""}${noteHtml(p, src.task)}
     ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${t}</span>`).join("")}</div>` : ""}
     ${it.diffs.length && (it.status !== "missing" || it.e) && it.status !== "extra" ? `<ul class="diffs">${it.diffs.map(d => `<li>${esc(d)}</li>`).join("")}</ul>` : ""}
     ${more}
