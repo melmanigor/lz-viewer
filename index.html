@@ -265,7 +265,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.31 · 22/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.32 · 22/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal-bg" id="statModal" hidden><div class="modal stat-modal" role="dialog" aria-modal="true" aria-labelledby="smT">
@@ -510,13 +510,16 @@ function render(){
 }
 
 /* ---------- Eilat: a safe going to Eilat this week must be prepared by Sunday ---------- */
-let eilatPopupDone = false;
+let eilatPopupDone = false, eilatSig = "";
 function eilatPopup(){   // once per app opening, after login, for this week and the coming ones
   if (eilatPopupDone || document.body.classList.contains("out") || archiveWeek) return;
   eilatPopupDone = true;
   const t = todayYmd();
   const hits = buildItems().filter(it => it.p && KEEP.has(it.p.task) && it.date >= t && /אילת/.test(`${it.p.site} ${it.p.address || ""}`));
   if (!hits.length) return;
+  const sig = hits.map(it => `${it.date}|${devNo(it.p.device)}|${it.p.site}`).join(";");
+  if (store.get("eilatSeen", "") === sig) return;   // already confirmed "הבנתי" for exactly these safes
+  eilatSig = sig;
   const sun = weekOf(hits[0].date);
   $("emT").textContent = `כספת לאילת: צריך להכין עד יום ראשון ${dm(sun)}`;
   $("emL").innerHTML = hits.map(it => `<li>יום ${DAYS[toUTC(it.date).getUTCDay()]} ${dm(it.date)}: ${esc(it.p.site)} · ${esc(it.p.task)} · כספת ${esc(it.p.device || "—")}</li>`).join("");
@@ -854,7 +857,7 @@ async function openWeek(w){
     window.scrollTo({ top: 0, behavior: "smooth" });
   }catch(e){ toast("טעינת השבוע נכשלה"); }
 }
-$("emOk").onclick = () => { $("eilatModal").hidden = true; };
+$("emOk").onclick = () => { $("eilatModal").hidden = true; if (eilatSig) store.set("eilatSeen", eilatSig); };
 $("eilatModal").addEventListener("click", e => { if (e.target.id === "eilatModal") $("eilatModal").hidden = true; });
 document.addEventListener("keydown", e => { if (e.key === "Escape") $("eilatModal").hidden = true; });
 $("arcBack").onclick = () => { pickedDay = null; load(); };

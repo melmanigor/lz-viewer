@@ -13,6 +13,7 @@
 import argparse
 import base64
 import datetime as dt
+import hashlib
 import html
 import json
 import os
@@ -71,7 +72,23 @@ def log(msg):
 
 
 def notify(title, body):
-    """התראה בפינת המסך של Windows. אם לא אפשרי, חלון הודעה רגיל."""
+    """התראה בפינת המסך של Windows. אם לא אפשרי, חלון הודעה רגיל.
+    אותה התראה בדיוק (אותה כותרת ואותו תוכן) מוצגת פעם אחת בלבד. רק פער חדש או משימת אילת חדשה יקפיצו שוב."""
+    seen_path = OUTPUT_DIR / ".notified.json"
+    key = hashlib.sha256(f"{title}\n{body}".encode("utf-8")).hexdigest()[:16]
+    try:
+        seen = json.loads(seen_path.read_text(encoding="utf-8"))
+    except Exception:
+        seen = {}
+    if key in seen:
+        log(f"[alert already shown {seen[key]}] {title}")
+        return
+    seen[key] = f"{dt.datetime.now():%d/%m %H:%M}"
+    try:
+        OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+        seen_path.write_text(json.dumps(dict(list(seen.items())[-200:]), ensure_ascii=False), encoding="utf-8")
+    except Exception:
+        pass
     if os.name != "nt":
         log(f"[alert] {title}: {body}")
         return
