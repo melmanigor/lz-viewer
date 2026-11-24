@@ -265,7 +265,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.32 · 22/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.33 · 24/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal-bg" id="statModal" hidden><div class="modal stat-modal" role="dialog" aria-modal="true" aria-labelledby="smT">
@@ -473,8 +473,10 @@ function render(){
   const all = buildItems().filter(it => state.tasks.has(itemTask(it)));
   const weeks = [...new Set(buildItems().map(it => weekOf(it.date)))].sort();
   if (!state.week || !weeks.includes(state.week)){
+    const n = new Date(), t = `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;
+    const next = [...new Set(all.map(it => it.date))].sort().find(d => d > t);   // next work day (Thu/Fri -> Sunday)
     const ed = state.email.map(e => e.date).sort()[0];
-    state.week = ed ? weekOf(ed) : weeks[weeks.length-1] || weekOf(ymd(new Date()));
+    state.week = next ? weekOf(next) : ed ? weekOf(ed) : weeks[weeks.length-1] || weekOf(ymd(new Date()));
   }
   const wi = weeks.indexOf(state.week);
   $("prevW").disabled = wi <= 0; $("nextW").disabled = wi < 0 || wi >= weeks.length-1;
@@ -730,7 +732,7 @@ $("mailSent").onclick = async () => {
   try{ await rpc("lz_flag_set", { p_token: getToken(), p_key: "gapsmail:" + w, p_value: v }); mailFlags[w] = v; updateMail(); toast("סומן שהמייל נשלח"); }
   catch{ toast("לא הצלחתי לשמור. נסה שוב"); }
 };
-/* ---------- today first, any day or the whole week one tap away ---------- */
+/* ---------- next work day first, any day or the whole week one tap away ---------- */
 let pickedDay = null;   // "YYYY-MM-DD", or "week"
 const todayYmd = () => { const n = new Date(); return `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`; };
 function applyDay(){
@@ -738,7 +740,7 @@ function applyDay(){
   const dates = cols.map(c => c.dataset.date);
   if (!pickedDay || (pickedDay !== "week" && !dates.includes(pickedDay))){
     const t = todayYmd();
-    pickedDay = dates.includes(t) ? t : (dates.find(d => d > t) || dates[0] || "week");
+    pickedDay = dates.find(d => d > t) || (dates.includes(t) ? t : dates[dates.length-1]) || "week";   // open on the next work day
   }
   document.querySelectorAll("#board .day").forEach(c => { c.hidden = pickedDay !== "week" && c.dataset.date !== pickedDay; });
   $("board").classList.toggle("one", pickedDay !== "week");
