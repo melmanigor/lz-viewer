@@ -430,7 +430,8 @@ function render(){
 /* ---------- Eilat: a safe going to Eilat this week must be prepared by Sunday ---------- */
 function eilatBanner(items){
   const el = $("eilat"); if (!el) return;
-  const hits = items.filter(it => it.p && /אילת/.test(`${it.p.site} ${it.p.address || ""}`));
+  const n = new Date(), today = `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;
+  const hits = items.filter(it => it.p && weekOf(it.date) >= today && /אילת/.test(`${it.p.site} ${it.p.address || ""}`));   // from Monday the safe is already prepared
   el.hidden = !hits.length; if (!hits.length) return;
   el.innerHTML = `<b>🔔 כספת לאילת השבוע: צריך להכין עד יום ראשון ${dm(state.week)}</b><ul>${
     hits.map(it => `<li>יום ${DAYS[toUTC(it.date).getUTCDay()]} ${dm(it.date)}: ${esc(it.p.site)} · ${esc(it.p.task)} · כספת ${esc(it.p.device || "—")}</li>`).join("")}</ul>`;

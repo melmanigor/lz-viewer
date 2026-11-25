@@ -265,7 +265,7 @@ body.out #login{border:0;border-radius:20px;padding:28px 24px;box-shadow:0 20px 
     <div class="arc-weeks" id="arcWeeks"></div>
   </section>
   <p class="note">התאמה לפי מספר כספת/מכשיר. כשבמייל חסר מספר, או שהמספר שונה, ההתאמה נעשית לפי שם האתר. מספר כספת שחסר במייל מושלם מהאקסל. מסומנים רק פערים ביום ובמספר כספת שונה. במקרה של פער, הלוז מוצג לפי האקסל (יום, מספר כספת, אתר ודגם), והסריאל נלקח מהמייל.</p>
-  <footer class="ver" id="ver">גרסה 1.33 · 24/11/2026</footer>
+  <footer class="ver" id="ver">גרסה 1.34 · 25/11/2026</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="modal-bg" id="statModal" hidden><div class="modal stat-modal" role="dialog" aria-modal="true" aria-labelledby="smT">
@@ -517,7 +517,7 @@ function eilatPopup(){   // once per app opening, after login, for this week and
   if (eilatPopupDone || document.body.classList.contains("out") || archiveWeek) return;
   eilatPopupDone = true;
   const t = todayYmd();
-  const hits = buildItems().filter(it => it.p && KEEP.has(it.p.task) && it.date >= t && /אילת/.test(`${it.p.site} ${it.p.address || ""}`));
+  const hits = buildItems().filter(it => it.p && KEEP.has(it.p.task) && it.date >= t && weekOf(it.date) >= t && /אילת/.test(`${it.p.site} ${it.p.address || ""}`));
   if (!hits.length) return;
   const sig = hits.map(it => `${it.date}|${devNo(it.p.device)}|${it.p.site}`).join(";");
   if (store.get("eilatSeen", "") === sig) return;   // already confirmed "הבנתי" for exactly these safes
@@ -529,7 +529,8 @@ function eilatPopup(){   // once per app opening, after login, for this week and
 }
 function eilatBanner(items){
   const el = $("eilat"); if (!el) return;
-  const hits = items.filter(it => it.p && /אילת/.test(`${it.p.site} ${it.p.address || ""}`));
+  const n = new Date(), today = `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;
+  const hits = items.filter(it => it.p && weekOf(it.date) >= today && /אילת/.test(`${it.p.site} ${it.p.address || ""}`));   // from Monday the safe is already prepared
   el.hidden = !hits.length; if (!hits.length) return;
   el.innerHTML = `<b>🔔 כספת לאילת השבוע: צריך להכין עד יום ראשון ${dm(state.week)}</b><ul>${
     hits.map(it => `<li>יום ${DAYS[toUTC(it.date).getUTCDay()]} ${dm(it.date)}: ${esc(it.p.site)} · ${esc(it.p.task)} · כספת ${esc(it.p.device || "—")}</li>`).join("")}</ul>`;

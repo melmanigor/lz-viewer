@@ -1037,7 +1037,8 @@ def main():
     # כספת לאילת באחד הימים: צריך להכין אותה עד יום ראשון של אותו שבוע
     if plan_path:
         today = dt.date.today().isoformat()
-        eilat = [p for p in parse_plan(plan_rows) if "אילת" in f"{p['site']} {p.get('address', '')}" and p["date"] >= today]
+        eilat = [p for p in parse_plan(plan_rows) if "אילת" in f"{p['site']} {p.get('address', '')}" and p["date"] >= today
+                 and week_of(p["date"]) >= today]   # מיום שני של אותו שבוע הכספת כבר הוכנה, אין צורך להזכיר
         for w in sorted({week_of(p["date"]) for p in eilat}):
             ps = [p for p in eilat if week_of(p["date"]) == w]
             sun = dt.date.fromisoformat(w)
