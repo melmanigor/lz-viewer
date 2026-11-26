@@ -353,7 +353,7 @@ def rows_from_html(body: str):
     p = TableParser(); p.feed(body)
     out, seen = [], {}
     for ti, grid in enumerate(p.tables):
-        header = None
+        header, last_date = None, None
         for row in grid:
             if any("שם אתר" in c for c in row) and any("סריאל" in c for c in row):
                 header = {k: next((i for i, h in enumerate(row) if any(w in h for w in ws)), -1) for k, ws in COLS.items()}
@@ -361,9 +361,10 @@ def rows_from_html(body: str):
             if not header:
                 continue
             get = lambda k: row[header[k]] if 0 <= header[k] < len(row) else ""
-            d = parse_date(get("date"))
+            d = parse_date(get("date")) or (last_date if get("site").strip() and not get("date").strip() else None)
             if not d or not get("site"):
                 continue
+            last_date = d   # שורה בלי תאריך (תא ריק ולא ממוזג) שייכת ליום של השורה שמעליה
             key = (d, re.sub(r"\D", "", get("device")) or get("site").strip())
             if key in seen and seen[key][1] != ti:  # אותה שורה בטבלה אחרת = המייל המצוטט (הישן) שמתחת לתשובה.
                 prev = seen[key][0]  # הגרסה העליונה, החדשה, קובעת. אם חסר בה סריאל ובישנה יש, משלימים ממנה.
