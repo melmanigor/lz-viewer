@@ -352,7 +352,7 @@ def parse_date(s):
 def rows_from_html(body: str):
     p = TableParser(); p.feed(body)
     out, seen = [], {}
-    for grid in p.tables:
+    for ti, grid in enumerate(p.tables):
         header = None
         for row in grid:
             if any("שם אתר" in c for c in row) and any("סריאל" in c for c in row):
@@ -365,8 +365,9 @@ def rows_from_html(body: str):
             if not d or not get("site"):
                 continue
             key = (d, re.sub(r"\D", "", get("device")) or get("site").strip())
-            if key in seen:  # שורה מהמייל המצוטט (הישן) שמתחת לתשובה. הגרסה העליונה, החדשה, קובעת,
-                prev = seen[key]  # אבל אם חסר בה סריאל ובישנה יש, משלימים ממנה
+            if key in seen and seen[key][1] != ti:  # אותה שורה בטבלה אחרת = המייל המצוטט (הישן) שמתחת לתשובה.
+                prev = seen[key][0]  # הגרסה העליונה, החדשה, קובעת. אם חסר בה סריאל ובישנה יש, משלימים ממנה.
+                # (שתי שורות באותה טבלה, למשל שני מכשירים לאותו אתר, תמיד נשארות שתיהן)
                 if not prev["serial"].strip() and get("serial").strip():
                     prev["serial"] = get("serial")
                 continue
@@ -374,7 +375,7 @@ def rows_from_html(body: str):
                        "device": get("device"), "model": get("model"),
                        "ins": get("ins").strip().upper() == "V", "plate": get("plate").strip().upper() == "V",
                        "task": get("task"), "serial": get("serial")}
-            seen[key] = row_out
+            seen.setdefault(key, (row_out, ti))
             out.append(row_out)
     return out
 
